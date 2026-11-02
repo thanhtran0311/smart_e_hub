@@ -1,0 +1,156 @@
+# Cấu trúc smart_e_hub
+
+Trạng thái: **khung thư mục**, chưa triển khai chức năng. File nguồn là chỗ giữ trống; `data/*.json` chỉ chứa `[]`, riêng `config.json` là `{}`.
+
+Xem `README.md` để hiểu vai trò từng phần và `docs/uc-catalog.md` để tra Use Case → trang → route.
+
+## Quy ước đặt file
+
+- Mỗi màn hình trong `src/pages/` gồm **một cặp**: `.html` (markup fragment) và `.js` (controller export `{ id, layout, mount, unmount }`).
+- Mỗi component trong `src/components/` cũng là một cặp `.html` + `.js`.
+- File `.html` là fragment: không `<!DOCTYPE>`, không `<script>`, không `<link>`; mọi thứ nạp một lần ở `index.html`.
+- Trang không tự `fetch` dữ liệu và không tự đọc `localStorage`; đi qua `src/services/` và `src/storage/`.
+
+## Cây thư mục
+
+- `assets/`
+  - `fonts/` — Inter bản offline (thay Google Fonts CDN)
+  - `images/` — logo, favicon
+  - `vendor/` — `tailwind.js`, `lucide.js` bản offline (thay CDN)
+- `data/` — 22 file, xem schema tại `docs/data-schema.md`
+  - `hubs.json`
+  - `parking-spaces.json`
+  - `charging-points.json`
+  - `vehicles.json`
+  - `private-vehicles.json`
+  - `users.json`
+  - `wallets.json`
+  - `tariffs.json`
+  - `config.json`
+  - `reservations.json`
+  - `trips.json`
+  - `charging-schedules.json`
+  - `charging-sessions.json`
+  - `dispatch-orders.json`
+  - `incidents.json`
+  - `work-orders.json`
+  - `teams.json`
+  - `simulation-scenarios.json`
+  - `recommendations.json`
+  - `telemetry-events.json`
+  - `notifications.json`
+  - `audit-logs.json`
+- `docs/`
+  - `references/`
+    - `mockup.html`
+    - `project-specification.pdf`
+    - `submission-1.pdf`
+    - `submission-2.pdf`
+  - `submission-3/`
+    - `diagrams/`
+      - `exported/`
+        - `.gitkeep`
+      - `classes.puml`
+      - `deployment.puml`
+      - `development.puml`
+    - `class-and-method-descriptions.md`
+    - `deployment-view.md`
+    - `development-view.md`
+  - `team/`
+    - `meeting-minutes.md`
+    - `peer-evaluation.md`
+    - `task-assignment.md`
+  - `final/`
+    - `screenshots/`
+      - `.gitkeep`
+    - `slides/`
+      - `.gitkeep`
+    - `demo-script.md`
+    - `final-report.md`
+  - `ai-usage.md`
+  - `data-schema.md`
+  - `uc-catalog.md`
+- `src/`
+  - `components/`
+    - `header.html` + `header.js`
+    - `hub-map.html` + `hub-map.js`
+    - `login-modal.html` + `login-modal.js`
+    - `sidebar.html` + `sidebar.js`
+    - `toast.html` + `toast.js`
+  - `models/` (19 lớp dự kiến)
+    - `AuditLog.js`
+    - `ChargingPoint.js`
+    - `ChargingSchedule.js`
+    - `ChargingSession.js`
+    - `DispatchOrder.js`
+    - `Hub.js`
+    - `Incident.js`
+    - `Notification.js`
+    - `ParkingSpace.js`
+    - `PrivateVehicle.js`
+    - `Recommendation.js`
+    - `Reservation.js`
+    - `SimulationScenario.js`
+    - `TelemetryEvent.js`
+    - `Trip.js`
+    - `User.js`
+    - `Vehicle.js`
+    - `Wallet.js`
+    - `WorkOrder.js`
+  - `pages/`
+    - `operator/`
+      - `charging-schedule.html` + `.js`
+      - `incidents.html` + `.js`
+      - `network-dashboard.html` + `.js`
+      - `telemetry.html` + `.js`
+      - `vehicle-dispatch.html` + `.js`
+      - `what-if.html` + `.js`
+    - `student/`
+      - `hub-search.html` + `.js`
+      - `parking-charging.html` + `.js`
+      - `pickup-return.html` + `.js`
+    - `landing.html` + `landing.js`
+  - `services/` (16 module)
+    - `auth-service.js`
+    - `charging-service.js`
+    - `charging-scheduler-service.js`
+    - `dispatch-service.js`
+    - `hub-service.js`
+    - `incident-service.js`
+    - `monitoring-service.js`
+    - `notification-service.js`
+    - `parking-service.js`
+    - `recommendation-service.js`
+    - `reservation-service.js`
+    - `simulation-service.js`
+    - `telemetry-service.js`
+    - `trip-service.js`
+    - `wallet-service.js`
+    - `audit-log-service.js`
+  - `storage/`
+    - `app-state.js`
+    - `event-bus.js`
+    - `json-loader.js`
+    - `local-storage.js`
+  - `styles/`
+    - `base.css` — font, reset, scrollbar, animation
+    - `layout.css` — khung header + sidebar + vùng nội dung
+    - `components.css` — nav-active, pin bản đồ, card, badge, màu trạng thái
+  - `utils/`
+    - `date-time.js`
+    - `format.js`
+    - `id-generator.js`
+    - `status.js`
+    - `validation.js`
+  - `app.js`
+  - `router.js`
+- `tests/`
+  - `manual/`
+    - `test-cases.md`
+  - `unit/`
+    - `.gitkeep`
+- `.gitignore`
+- `index.html`
+- `README.md`
+- `STRUCTURE.md` (tài liệu này)
+- `start-demo.bat` — chạy `python -m http.server` rồi mở trình duyệt (không dùng `file://`)

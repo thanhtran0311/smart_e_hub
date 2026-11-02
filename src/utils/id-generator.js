@@ -1,0 +1,1 @@
+// id-generator - sinh ma theo tien to: H-, P-, CHG-, RES-, TRP-, SCH-, CSS-, DSP-, INC-, WO-, REC-, TEL-. TODO

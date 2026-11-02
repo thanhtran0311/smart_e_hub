@@ -1,0 +1,1 @@
+// telemetry - controller cho telemetry.html: export { id, layout, mount, unmount }. TODO

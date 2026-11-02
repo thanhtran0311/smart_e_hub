@@ -1,0 +1,1 @@
+// hub-search - controller cho hub-search.html: export { id, layout, mount, unmount }. TODO

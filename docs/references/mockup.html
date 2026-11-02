@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart E-Mobility Hub – ĐHQG-HCM (VNU-HCM)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: #f8fafc;
+        color: #0f172a;
+    }
+
+    /* Nút sidebar đang được chọn */
+    button.nav-active {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        font-weight: 600;
+    }
+
+    /* Icon của nút đang được chọn */
+    button.nav-active i {
+        color: #ffffff !important;
+    }
+
+    .hub-pin {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .hub-pin:hover {
+        transform: translateY(-2px) scale(1.03);
+    }
+
+    .hub-pin-active {
+        background-color: #0f172a !important;
+        color: #fff !important;
+    }
+
+    .custom-scroll::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
+    }
+
+    .custom-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 9999px;
+    }
+    
+    #landing-view main button[onclick*="enterApp"]:first-child {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+        border-color: #1e3a8a !important;
+    }
+
+    #landing-view main button[onclick*="enterApp"]:last-child {
+        background-color: #ffffff !important;
+        color: #1e3a8a !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    /* Icon nút 1 màu trắng */
+    #landing-view main button[onclick*="enterApp"]:first-child i {
+        color: #ffffff !important;
+        stroke: #ffffff !important;
+    }
+
+    /* Icon nút 2 màu xanh */
+    #landing-view main button[onclick*="enterApp"]:last-child i {
+        color: #1e3a8a !important;
+        stroke: #1e3a8a !important;
+    }
+
+    #tab-uc12 button[onclick="runWhatIfSimulationUC12()"] {
+        background-color: #1e3a8a !important;
+        color: #ffffff !important;
+    }
+
+    #tab-uc12 button[onclick="runWhatIfSimulationUC12()"]:hover {
+        background-color: #1e40af !important;
+    }
+
+    /* Minimal visual system: calmer surfaces, clearer hierarchy, less visual noise. */
+    :root {
+        --minimal-ink: #172033;
+        --minimal-muted: #64748b;
+        --minimal-line: #e2e8f0;
+        --minimal-surface: #ffffff;
+        --minimal-canvas: #f7f8fa;
+        --minimal-accent: #1e3a8a;
+        --minimal-accent-soft: #eff4ff;
+    }
+
+    body {
+        background: var(--minimal-canvas);
+        color: var(--minimal-ink);
+        letter-spacing: -0.01em;
+    }
+
+    #landing-view {
+        background: var(--minimal-canvas) !important;
+    }
+
+    #landing-view > header {
+        background: rgba(255, 255, 255, 0.96) !important;
+        backdrop-filter: none;
+    }
+
+    #landing-view main {
+        max-width: 1100px;
+        padding-top: 5rem;
+        padding-bottom: 5rem;
+    }
+
+    #landing-view main > div {
+        max-width: 920px;
+    }
+
+    #landing-view main h1 {
+        max-width: 780px;
+        font-size: clamp(2rem, 4vw, 3.25rem);
+        line-height: 1.12;
+        letter-spacing: -0.045em;
+    }
+
+    #landing-view main p {
+        max-width: 650px;
+        color: var(--minimal-muted);
+    }
+
+    #landing-view main > div > div:first-child {
+        background: transparent !important;
+        border: 0;
+        padding-left: 0;
+        padding-right: 0;
+        color: var(--minimal-accent) !important;
+    }
+
+    #landing-view main .grid > div {
+        border-color: var(--minimal-line);
+        border-radius: 0.75rem;
+        box-shadow: none;
+        padding: 1.25rem;
+    }
+
+    #landing-view main button[onclick*="enterApp"] {
+        border-radius: 0.625rem;
+        box-shadow: none;
+        min-height: 2.875rem;
+    }
+
+    #app-view {
+        background: var(--minimal-canvas) !important;
+    }
+
+    #app-view > header {
+        height: 4.5rem;
+        padding-left: 1.75rem;
+        padding-right: 1.75rem;
+        background: var(--minimal-surface);
+    }
+
+    #app-view > header .w-9,
+    #landing-view header .w-10 {
+        border-radius: 0.625rem;
+        box-shadow: none;
+    }
+
+    #app-view > header .bg-slate-100,
+    #app-view > header input {
+        background: #f8fafc;
+    }
+
+    #app-view > header .bg-slate-100 {
+        border-color: var(--minimal-line);
+    }
+
+    #app-view > header .flex.items-center.gap-4 {
+        gap: 1rem;
+    }
+
+    #app-view > .flex-1 > aside {
+        width: 15rem;
+        padding: 1.25rem;
+        background: var(--minimal-surface);
+        border-color: var(--minimal-line);
+    }
+
+    #app-view aside nav {
+        gap: 0.25rem;
+    }
+
+    #app-view aside nav button {
+        min-height: 2.5rem;
+        padding: 0.625rem 0.75rem;
+        border-radius: 0.625rem;
+        color: #475569;
+        font-size: 0.8125rem;
+    }
+
+    #app-view aside nav button:hover {
+        background: #f8fafc;
+    }
+
+    button.nav-active {
+        background: var(--minimal-accent-soft) !important;
+        color: var(--minimal-accent) !important;
+        font-weight: 600;
+    }
+
+    button.nav-active i {
+        color: var(--minimal-accent) !important;
+    }
+
+    #app-view aside .text-\[11px\] {
+        color: #94a3b8;
+        letter-spacing: 0.08em;
+    }
+
+    #app-view aside > div:last-child {
+        padding-top: 1.25rem;
+    }
+
+    #app-view aside > div:last-child > div {
+        border: 0;
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        padding: 0.875rem;
+    }
+
+    #app-view > .flex-1 > main > div:first-child {
+        padding: 0.75rem 1.75rem;
+        background: rgba(255, 255, 255, 0.9);
+        border-color: var(--minimal-line);
+    }
+
+    #app-view > .flex-1 > main > div:first-child > div:first-child {
+        gap: 0.5rem;
+    }
+
+    #app-view > .flex-1 > main > div:first-child > div:first-child > div {
+        border: 0;
+        border-radius: 0.5rem;
+        padding: 0.375rem 0.625rem;
+        background: #f8fafc;
+        color: #475569;
+    }
+
+    #app-view section:not(#tab-uc01) {
+        padding: 2rem;
+    }
+
+    #app-view section:not(#tab-uc01) > div {
+        max-width: 1100px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    #app-view section:not(#tab-uc01) .bg-white {
+        border-color: var(--minimal-line);
+        border-radius: 0.75rem;
+        box-shadow: none;
+    }
+
+    #app-view section:not(#tab-uc01) .bg-slate-50 {
+        background: #f8fafc;
+        border-color: #e8edf3;
+    }
+
+    #app-view section h2 {
+        letter-spacing: -0.025em;
+    }
+
+    #tab-uc01 > div:first-child {
+        background: #f1f4f8;
+    }
+
+    #tab-uc01 > div:last-child {
+        padding: 2rem;
+        border-color: var(--minimal-line);
+    }
+
+    #tab-uc01 .bg-white,
+    #tab-uc01 .bg-white\/90 {
+        box-shadow: none;
+        border-color: var(--minimal-line);
+    }
+
+    #tab-uc01 .rounded-2xl,
+    #tab-uc01 .rounded-xl {
+        border-radius: 0.75rem;
+    }
+
+    #app-view button {
+        transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+    }
+
+    #app-view button:not(.nav-active):not([class*="bg-blue-900"]) {
+        box-shadow: none;
+    }
+
+    @media (max-width: 1024px) {
+        #app-view > .flex-1 > aside {
+            width: 13.5rem;
+        }
+
+        #app-view section:not(#tab-uc01) {
+            padding: 1.25rem;
+        }
+    }
+
+    @media (max-width: 640px) {
+        #app-view > header {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        #app-view > .flex-1 > aside {
+            width: 12rem;
+            padding: 0.75rem;
+        }
+
+        #app-view > .flex-1 > main > div:first-child {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
+
+    #login-modal input:focus {
+        outline: none;
+    }
+
+    #login-modal button {
+        transition: background-color 160ms ease, color 160ms ease;
+    }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- ==================== LANDING PAGE VIEW ==================== -->
+  <div id="landing-view" class="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-blue-50/40">
+    <!-- Top Header -->
+    <header class="border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-30">
+      <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-900 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+            BK
+          </div>
+          <div>
+            <div class="font-bold text-slate-900 leading-tight">Smart E-Mobility Hub</div>
+            <div class="text-xs text-slate-500">Khu đô thị ĐHQG-HCM</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-6 py-12 grid lg:grid-cols-12 gap-10 items-center">
+      <div class="lg:col-span-12 space-y-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-100/80 text-blue-900 text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          Kết nối chặng cuối Ga Metro Số 1 – Khu đô thị ĐHQG-HCM
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+          Hệ thống Quản lý & Điều phối Phương tiện Điện Thông minh <span class="text-blue-900">VNU-HCM</span>
+        </h1>
+        <p class="text-slate-600 text-base leading-relaxed">
+          Quản lý phương tiện điện, chỗ đỗ, lịch sạc và điều phối vận hành trong khu đô thị ĐHQG-HCM.
+        </p>
+
+        <!-- Real-time Summary Pills -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+          <div class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs text-slate-500">Mobility Hubs</div>
+            <div class="text-xl font-bold text-slate-900 mt-0.5">05 Trạm chính</div>
+            <div class="text-[11px] text-emerald-600 font-medium mt-1">● Đang hoạt động</div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs text-slate-500">Xe điện sẵn sàng</div>
+            <div class="text-xl font-bold text-blue-900 mt-0.5">61 / 85 Xe</div>
+            <div class="text-[11px] text-slate-500 mt-1">Sẵn sàng phục vụ</div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs text-slate-500">Ô đỗ còn trống</div>
+            <div class="text-xl font-bold text-slate-900 mt-0.5">72 / 135 Ô</div>
+            <div class="text-[11px] text-amber-600 font-medium mt-1">KTX Khu B: Đầy chỗ</div>
+          </div>
+          <div class="p-3.5 rounded-xl bg-white border border-slate-200 shadow-sm">
+            <div class="text-xs text-slate-500">Cổng sạc khả dụng</div>
+            <div class="text-xl font-bold text-emerald-700 mt-0.5">18 / 28 Cổng</div>
+            <div class="text-[11px] text-slate-500 mt-1">Đang sẵn sàng</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap gap-3 pt-2">
+          <button onclick="enterApp('student', 'uc01')" class="px-5 py-3 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-sm shadow flex items-center gap-2 transition">
+            <i data-lucide="compass" class="w-4 h-4"></i>
+            Mở WebApp – Phân hệ Sinh viên
+          </button>
+          <button onclick="enterApp('operator', 'uc08')" class="px-5 py-3 rounded-xl bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-semibold text-sm flex items-center gap-2 transition">
+            <i data-lucide="activity" class="w-4 h-4 text-blue-900"></i>
+            Mở Dashboard – Đơn vị Vận hành
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ==================== LOGIN MODAL ==================== -->
+  <div id="login-modal" class="hidden fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-6 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <div class="text-xs font-semibold uppercase tracking-wider text-blue-900">Đăng nhập hệ thống</div>
+          <h2 id="login-title" class="text-2xl font-bold text-slate-900 mt-1">Phân hệ Sinh viên</h2>
+          <p id="login-description" class="text-sm text-slate-500 mt-2">Đăng nhập để sử dụng các dịch vụ dành cho sinh viên.</p>
+        </div>
+        <button type="button" onclick="closeLoginModal()" class="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form onsubmit="authenticateUser(event)" class="space-y-4">
+        <div>
+          <label for="login-username" class="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+          <input id="login-username" name="username" type="text" autocomplete="username" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none focus:border-blue-800 focus:ring-2 focus:ring-blue-100" placeholder="Nhập username">
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" required class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 outline-none focus:border-blue-800 focus:ring-2 focus:ring-blue-100" placeholder="Nhập password">
+        </div>
+        <div id="login-error" class="hidden p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-700" role="alert"></div>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="closeLoginModal()" class="px-4 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100">Hủy</button>
+          <button type="submit" class="px-4 py-2.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-white text-sm font-semibold">Đăng nhập</button>
+        </div>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-500">
+        Demo: <span class="font-medium">student01 / 123456</span> hoặc <span class="font-medium">operator01 / 123456</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN WEBAPP WORKSPACE ==================== -->
+  <div id="app-view" class="hidden h-screen flex flex-col overflow-hidden bg-slate-100">
+    <!-- Top Navigation Bar (Matches Reference Style) -->
+    <header class="h-16 bg-white border-b border-slate-200 px-5 flex items-center justify-between shrink-0 z-20">
+      <!-- Left Brand -->
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2.5 cursor-pointer" onclick="backToLanding()">
+          <div class="w-9 h-9 rounded-lg bg-blue-900 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+            BK
+          </div>
+          <div>
+            <div class="font-bold text-sm text-slate-900 leading-none">VNU-HCM E-Mobility</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Smart Campus Coordination</div>
+          </div>
+        </div>
+
+        <!-- Location Pill -->
+        <div class="hidden md:flex items-center gap-2 bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-lg text-xs text-slate-700">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-800"></i>
+          <span class="font-medium">Zone: Khu đô thị ĐHQG-HCM (Thủ Đức / Dĩ An)</span>
+        </div>
+
+        <!-- Search Input -->
+        <div class="hidden lg:flex items-center gap-2 bg-slate-100 border border-slate-200/80 px-3 py-1.5 rounded-lg w-48">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400"></i>
+          <input id="global-search" oninput="handleSearchHub(this.value)" type="text" placeholder="Tìm Hub (Ga Metro, KTX A, BK...)" class="bg-transparent text-xs outline-none w-full text-slate-700" />
+        </div>
+      </div>
+
+      <!-- Right Role Switcher & User Profile -->
+      <div class="flex items-center gap-4">
+        <!-- Role Toggle -->
+        <div class="bg-slate-100 p-1 rounded-lg border border-slate-200 flex items-center text-xs font-medium shrink-0">
+          <button id="btn-role-student" onclick="switchRole('student')" class="px-2 py-1 rounded-md bg-white text-blue-900 shadow-sm transition">
+            Student View
+          </button>
+          <button id="btn-role-operator" onclick="switchRole('operator')" class="px-2 py-1 rounded-md text-slate-600 hover:text-slate-900 transition">
+            Operator View
+          </button>
+        </div>
+
+        <!-- Notification Toast Trigger -->
+        <div class="relative">
+          <button onclick="switchTab('uc11')" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 relative" title="Cảnh báo hệ thống">
+            <i data-lucide="bell" class="w-4 h-4"></i>
+            <span id="alert-badge" class="w-4 h-4 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center absolute -top-0.5 -right-0.5">2</span>
+          </button>
+        </div>
+
+        <!-- User Info -->
+        <div class="flex items-center gap-2.5 pl-2 border-l border-slate-200 translate-x-1">
+          <div id="user-avatar" class="w-8 h-8 rounded-full bg-blue-900 text-white text-xs font-bold flex items-center justify-center">
+            SV
+          </div>
+          <div class="text-xs leading-tight hidden sm:block">
+            <div id="user-name" class="font-semibold text-slate-800">Trần Tiến Thành</div>
+            <div id="user-role-label" class="text-[11px] text-blue-800 font-medium">MSSV: 2413181</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Body -->
+    <div class="flex-1 flex overflow-hidden">
+      <!-- Left Sidebar (Matches Reference Image) -->
+      <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 p-4 select-none overflow-y-auto custom-scroll">
+        <div class="space-y-6">
+          <!-- Student Services Menu -->
+          <div id="student-services-menu">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
+              Dịch vụ Sinh viên (Student)
+            </div>
+            <nav class="space-y-1 text-xs">
+              <button id="nav-uc01" onclick="switchTab('uc01')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition nav-active">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="compass" class="w-4 h-4"></i>
+                  <span>Tra cứu & Đặt xe </span>
+                </span>
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-300"></span>
+              </button>
+              <button id="nav-uc03" onclick="switchTab('uc03')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="bike" class="w-4 h-4"></i>
+                  <span>Nhận & Trả xe </span>
+                </span>
+                <span id="side-trip-badge" class="hidden px-1.5 py-0.5 text-[10px] rounded bg-emerald-100 text-emerald-800 font-semibold">1</span>
+              </button>
+              <button id="nav-uc05" onclick="switchTab('uc05')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="plug-zap" class="w-4 h-4"></i>
+                  <span>Đỗ & Sạc xe cá nhân</span>
+                </span>
+              </button>
+            </nav>
+          </div>
+
+          <!-- Operator Center Menu -->
+          <div id="operator-center-menu" class="hidden">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">
+              Trung tâm Vận hành (Operator)
+            </div>
+            <nav class="space-y-1 text-xs">
+              <button id="nav-uc08" onclick="switchTab('uc08')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+                  <span>Giám sát mạng lưới</span>
+                </span>
+              </button>
+              <button id="nav-uc09" onclick="switchTab('uc09')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="arrow-left-right" class="w-4 h-4"></i>
+                  <span>Điều phối luân chuyển</span>
+                </span>
+              </button>
+              <button id="nav-uc10" onclick="switchTab('uc10')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="zap" class="w-4 h-4"></i>
+                  <span>Lập lịch sạc thông minh</span>
+                </span>
+              </button>
+              <button id="nav-uc11" onclick="switchTab('uc11')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="wrench" class="w-4 h-4"></i>
+                  <span>Xử lý sự cố kỹ thuật</span>
+                </span>
+                <span id="incident-count-pill" class="px-1.5 py-0.5 text-[10px] rounded bg-red-100 text-red-700 font-bold">2</span>
+              </button>
+              <button id="nav-uc12" onclick="switchTab('uc12')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="sliders" class="w-4 h-4"></i>
+                  <span>Mô phỏng What-if</span>
+                </span>
+              </button>
+              <button id="nav-uc14" onclick="switchTab('uc14')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 transition">
+                <span class="flex items-center gap-2.5">
+                  <i data-lucide="radio" class="w-4 h-4"></i>
+                  <span>Đồng bộ cảm biến IoT</span>
+                </span>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <!-- Bottom Status Box -->
+        <div class="space-y-2 pt-4 border-t border-slate-100">
+          <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5 font-medium text-slate-700">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Campus Grid: 99.4%
+              </span>
+              
+            </div>
+            <div id="student-wallet-status" class="flex items-center justify-between text-[11px] text-slate-500">
+              <span>Ví VNU-Pay (SV):</span>
+              <span id="wallet-balance-side" class="font-bold text-slate-800">120,000 VNĐ</span>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+              <span>Hỗ trợ khẩn cấp:</span>
+              <span class="font-bold text-blue-900">1900-VNU</span>
+            </div>
+          </div>
+          <button onclick="backToLanding()" class="w-full py-2 text-xs text-slate-500 hover:text-slate-800 flex items-center justify-center gap-1.5">
+            <i data-lucide="home" class="w-3.5 h-3.5"></i>
+            Quay về trang giới thiệu
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Dynamic Content Area -->
+      <main class="flex-1 flex flex-col overflow-hidden">
+        <!-- Global Status Pills Bar -->
+        <div class="bg-white/70 border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div class="flex flex-wrap items-center gap-2.5 text-xs">
+            <div class="px-3 py-1 rounded-full bg-blue-50 border border-blue-200/70 text-blue-900 font-medium flex items-center gap-1.5">
+              <i data-lucide="bike" class="w-3.5 h-3.5"></i>
+              <span>XE KHẢ DỤNG: <strong id="top-stat-vehicles">61</strong></span>
+            </div>
+            <div class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-800 font-medium flex items-center gap-1.5">
+              <i data-lucide="parking-square" class="w-3.5 h-3.5 text-blue-800"></i>
+              <span>Ô ĐỖ TRỐNG: <strong id="top-stat-slots">72</strong>/135</span>
+            </div>
+            <div class="px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/70 text-emerald-800 font-medium flex items-center gap-1.5">
+              <i data-lucide="plug-zap" class="w-3.5 h-3.5"></i>
+              <span>CỔNG SẠC SẴN SÀNG: <strong id="top-stat-chargers">18</strong>/28</span>
+            </div>
+            <div class="px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-medium flex items-center gap-1.5">
+              <i data-lucide="navigation" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span>HUB GẦN NHẤT: <strong>Ga Metro ĐHQG</strong> <span class="px-1.5 py-0.2 bg-slate-800 text-white rounded text-[10px]">180m</span></span>
+            </div>
+          </div>
+
+          <div id="global-toast" class="text-xs font-medium text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg">
+            Sẵn sàng: Chọn Hub hoặc chức năng bên trái để thao tác.
+          </div>
+        </div>
+
+        <!-- ==================== TAB 1: UC01 & UC02 (HUB EXPLORER & SHARED VEHICLE RESERVATION) ==================== -->
+        <section id="tab-uc01" class="flex-1 grid lg:grid-cols-12 overflow-hidden">
+          <!-- Center 2D Schematic Campus Map (Matches Reference Screenshot) -->
+          <div class="lg:col-span-8 relative bg-[#eef3f9] overflow-hidden flex flex-col justify-between p-5 select-none">
+            <!-- Map Filter Bar -->
+            <div class="flex flex-wrap items-center gap-2 z-10">
+              <div class="bg-white p-1.5 rounded-xl shadow-sm border border-slate-200/80 flex items-center gap-1 text-xs">
+                <button onclick="setVehicleFilter('ALL')" id="filter-all" class="px-3 py-1.5 rounded-lg bg-blue-900 text-white font-medium transition">
+                  Tất cả xe
+                </button>
+                <button onclick="setVehicleFilter('E-Bike')" id="filter-ebike" class="px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition">
+                  E-Bikes
+                </button>
+                <button onclick="setVehicleFilter('E-Scooter')" id="filter-escooter" class="px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition">
+                  E-Scooters
+                </button>
+                <button onclick="toggleBattery70Filter()" id="filter-bat70" class="px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition flex items-center gap-1">
+                  <i data-lucide="battery-charging" class="w-3.5 h-3.5"></i>
+                  <span>Pin > 70%</span>
+                </button>
+              </div>
+
+              <div class="bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200/80 text-xs font-medium text-slate-700 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span>Đang cập nhật</span>
+              </div>
+            </div>
+
+            <!-- Stylistic 2D Campus Map SVG Background -->
+            <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 800 600" preserveAspectRatio="none">
+              <!-- Green campus zones -->
+              <circle cx="380" cy="310" r="145" fill="#dcfce7" opacity="0.65" />
+              <ellipse cx="620" cy="240" rx="120" ry="90" fill="#dbeafe" opacity="0.6" />
+              <ellipse cx="210" cy="210" rx="140" ry="70" fill="#dbeafe" opacity="0.5" />
+              <!-- Inter-campus main roads -->
+              <path d="M 80 220 L 380 310 L 620 230" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+              <path d="M 380 310 L 250 480" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+              <path d="M 380 310 L 560 460" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+              <path d="M 80 220 L 380 310 L 620 230" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+              <path d="M 380 310 L 250 480" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+              <path d="M 380 310 L 560 460" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+            </svg>
+
+            <!-- Interactive Hub Pins on Map -->
+            <div class="relative flex-1 w-full">
+              <!-- H-01: Metro Station Hub -->
+              <div id="pin-H-01" onclick="selectHub('H-01')" style="top: 26%; left: 10%;" class="hub-pin hub-pin-active absolute bg-white text-slate-800 px-3.5 py-2 rounded-xl shadow-md border border-slate-300 flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                <div>
+                  <div class="text-xs font-bold flex items-center gap-1.5">
+                    <span>Ga Metro ĐHQG</span>
+                  </div>
+                  <div class="text-[11px] opacity-80" id="pin-sub-H-01">3 Xe • 26 Ô trống • 3 Cổng sạc</div>
+                </div>
+              </div>
+
+              <!-- H-02: Dormitory Area A -->
+              <div id="pin-H-02" onclick="selectHub('H-02')" style="top: 32%; left: 58%;" class="hub-pin absolute bg-white text-slate-800 px-3.5 py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <div>
+                  <div class="text-xs font-bold">KTX Khu A</div>
+                  <div class="text-[11px] text-slate-500" id="pin-sub-H-02">28 Xe • 14 Ô trống • 6 Cổng sạc</div>
+                </div>
+              </div>
+
+              <!-- H-03: Central Library Hub -->
+              <div id="pin-H-03" onclick="selectHub('H-03')" style="top: 48%; left: 36%;" class="hub-pin absolute bg-white text-slate-800 px-3.5 py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <div>
+                  <div class="text-xs font-bold">Thư viện Trung tâm</div>
+                  <div class="text-[11px] text-slate-500" id="pin-sub-H-03">12 Xe • 14 Ô trống • 4 Cổng sạc</div>
+                </div>
+              </div>
+
+              <!-- H-04: Campus BK Hub -->
+              <div id="pin-H-04" onclick="selectHub('H-04')" style="top: 72%; left: 18%;" class="hub-pin absolute bg-white text-slate-800 px-3.5 py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <div>
+                  <div class="text-xs font-bold">ĐH Bách Khoa</div>
+                  <div class="text-[11px] text-slate-500" id="pin-sub-H-04">18 Xe • 18 Ô trống • 5 Cổng sạc</div>
+                </div>
+              </div>
+
+              <!-- H-05: Dormitory Area B (Full Parking Alert) -->
+              <div id="pin-H-05" onclick="selectHub('H-05')" style="top: 68%; left: 60%;" class="hub-pin absolute bg-white text-slate-800 px-3.5 py-2 rounded-xl shadow-md border border-red-300 flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                <div>
+                  <div class="text-xs font-bold text-red-700">KTX Khu B</div>
+                  <div class="text-[11px] text-red-600 font-medium" id="pin-sub-H-05">Đầy chỗ • 0/25 Ô trống</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Map Footer Legend -->
+            <div class="flex items-center justify-between z-10">
+              <div class="bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-500 tracking-wide">
+                Bản đồ khu đô thị ĐHQG-HCM
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="selectHub('H-01')" class="bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200 text-xs font-medium text-blue-900 flex items-center gap-1.5">
+                  <i data-lucide="locate-fixed" class="w-3.5 h-3.5"></i>
+                  Vị trí của tôi (180m)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Inspector Panel: Hub Details + UC02 Reservation Summary -->
+          <div class="lg:col-span-4 bg-white border-l border-slate-200 p-5 overflow-y-auto custom-scroll space-y-5">
+            <!-- Hub Header -->
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="detail-hub-id" class="px-2 py-0.5 rounded bg-blue-900 text-white text-[10px] font-bold">HUB #H-01</span>
+                <span id="detail-hub-badge" class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">● Đang hoạt động • Giờ cao điểm</span>
+              </div>
+              <h2 id="detail-hub-name" class="text-xl font-bold text-slate-900 mt-1.5">Ga Metro ĐHQG Hub</h2>
+              <p id="detail-hub-location" class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                <i data-lucide="git-Commit" class="w-3.5 h-3.5 text-blue-800"></i>
+                Giao lộ Vành Đai ĐHQG & Cổng Trạm Metro Số 1
+              </p>
+            </div>
+
+            <!-- 3 Resource Cards -->
+            <div class="grid grid-cols-3 gap-2.5">
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Xe chia sẻ</span>
+                  <i data-lucide="bike" class="w-3.5 h-3.5 text-blue-900"></i>
+                </div>
+                <div id="detail-hub-vehicles" class="text-lg font-bold text-blue-900 mt-1">3</div>
+                <div class="text-[10px] text-slate-500">Khả dụng (Pin >30%)</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Ô đỗ trống</span>
+                  <span class="font-bold text-blue-900">P</span>
+                </div>
+                <div id="detail-hub-slots" class="text-lg font-bold text-slate-900 mt-1">26<span class="text-xs font-normal text-slate-400">/30</span></div>
+                <div class="text-[10px] text-slate-500">Sẵn sàng nhận xe</div>
+              </div>
+              <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div class="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Cổng sạc</span>
+                  <i data-lucide="plug-zap" class="w-3.5 h-3.5 text-emerald-600"></i>
+                </div>
+                <div id="detail-hub-chargers" class="text-lg font-bold text-slate-900 mt-1">3<span class="text-xs font-normal text-slate-400">/6 trống</span></div>
+                <div class="text-[10px] text-slate-500">AC 3.5kW & DC</div>
+              </div>
+            </div>
+
+            <!-- Vehicle List at Selected Hub -->
+            <div>
+              <div class="flex items-center justify-between mb-2.5">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600">Phương tiện tại trạm</h3>
+                <span id="vehicle-list-count" class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[11px] font-medium">3 xe sẵn sàng</span>
+              </div>
+              <div id="hub-vehicle-list" class="space-y-2">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- UC02: Reservation Summary Box -->
+            <div class="p-4 rounded-2xl border border-blue-200 bg-blue-50/40 space-y-3">
+              <div class="flex items-center justify-between border-b border-blue-100 pb-2">
+                <span class="text-xs font-bold text-blue-950">Tóm tắt Đơn đặt trước</span>
+                <span id="res-status-badge" class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold">Sẵn sàng đặt</span>
+              </div>
+
+              <div class="space-y-1.5 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Phương tiện đã chọn:</span>
+                  <span id="res-vehicle-id" class="font-bold text-slate-900">E-Bike #E-102</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Loại xe & Mức pin:</span>
+                  <span id="res-vehicle-bat" class="font-semibold text-emerald-700">E-Bike • 85% (~41 km)</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Vị trí chốt đỗ:</span>
+                  <span id="res-vehicle-slot" class="font-bold text-blue-900">Slot #04</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Thời gian giữ chỗ:</span>
+                  <span class="font-semibold text-slate-800">15 phút (cấp mã QR/PIN)</span>
+                </div>
+              </div>
+
+              <label class="flex items-start gap-2 text-[11px] text-slate-600 pt-1 cursor-pointer">
+                <input id="chk-terms-uc02" type="checkbox" checked class="mt-0.5 rounded border-slate-300 text-blue-900" />
+                <span>Tôi đồng ý với điều khoản mượn xe dùng chung (Tài khoản SSO hợp lệ, không nợ cước, pin > 30%).</span>
+              </label>
+
+              <div class="space-y-2 pt-1">
+                <button onclick="confirmSharedReservation()" class="w-full py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-1.5 transition">
+                  <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                  <span>Xác nhận Đặt trước Xe</span>
+                </button>
+                <button onclick="switchTab('uc05')" class="w-full py-2 rounded-xl bg-white hover:bg-slate-50 text-blue-900 border border-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition">
+                  <span class="font-bold">P</span>
+                  <span>Đặt trước vị trí đỗ xe cá nhân</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 2: UC03 & UC04 (UNLOCK / PICK UP & RETURN / LOCK VEHICLE) ==================== -->
+        <section id="tab-uc03" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-6xl mx-auto space-y-6">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900">Mở khóa Nhận phương tiện & Trả phương tiện tại Hub đích</h2>
+              <p class="text-xs text-slate-500 mt-0.5">Quy trình tự động hóa nhận – trả xe chia sẻ với cảm biến chốt đỗ IoT và hệ thống đọc pin BMS.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-6">
+              <!-- UC03 Panel -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900">Mở khóa & Nhận phương tiện</h3>
+                  </div>
+                  <span id="uc03-status-pill" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                    Giữ chỗ: 14:52
+                  </span>
+                </div>
+
+                <!-- Active Reservation Card -->
+                <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Mã đơn đặt xe:</span>
+                    <span id="uc03-booking-id" class="font-bold text-slate-900">RES-2026-089</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Phương tiện & Vị trí chốt:</span>
+                    <span id="uc03-vehicle-info" class="font-bold text-blue-900">E-Bike #E-102 • Slot #04 (Ga Metro)</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Mức pin hiện tại:</span>
+                    <span id="uc03-battery-info" class="font-semibold text-emerald-700">85% (Đạt chuẩn an toàn)</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-slate-500">Mã xác thực nhận xe (QR / PIN):</span>
+                    <span id="uc03-pin-display" class="font-mono font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded">PIN: 4829 / QR: E-102</span>
+                  </div>
+                </div>
+
+                <!-- Verification Controls (Main Flow + Alternative A1/A2 + Exception E3) -->
+                <div class="space-y-3 text-xs">
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Quét QR hoặc nhập mã xe / PIN</label>
+                    <div class="flex gap-2">
+                      <input id="uc03-input-code" type="text" value="E-102" placeholder="Nhập mã xe (VD: E-102) hoặc PIN" class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-800" />
+                      <button onclick="document.getElementById('uc03-input-code').value='E-102'" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">
+                        Giả lập Quét QR
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input id="uc03-cable-unplugged" type="checkbox" checked class="rounded text-blue-900" />
+                      <span>Đã rút cáp sạc an toàn trước khi mở khóa</span>
+                    </label>
+                  </div>
+
+                  <div class="flex flex-wrap gap-2 pt-1">
+                    <button onclick="unlockAndPickupVehicle()" class="flex-1 py-2.5 px-4 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm transition">
+                      <i data-lucide="unlock" class="w-4 h-4"></i>
+                      <span>Mở khóa Chốt đỗ & Nhận xe</span>
+                    </button>
+                    <button onclick="reportIssueBeforePickup()" class="py-2.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-semibold transition" title="Alternative Flow A2">
+                      Báo sự cố xe & đổi xe
+                    </button>
+                  </div>
+
+                  <div id="uc03-feedback" class="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs">
+                    Trạng thái: Đang chờ sinh viên xác thực mã QR/PIN tại chốt đỗ Slot #04.
+                  </div>
+                </div>
+              </div>
+
+              <!-- UC04 Panel -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 class="text-base font-bold text-slate-900">Trả phương tiện & Khóa xe tại Hub đích</h3>
+                  </div>
+                  <span id="uc04-trip-badge" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600">
+                    Chưa bắt đầu cuốc đi
+                  </span>
+                </div>
+
+                <div class="space-y-3 text-xs">
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Bước 1–3: Chọn Hub đích trả xe (Kiểm tra sức chứa ô đỗ)</label>
+                    <select id="uc04-dest-hub" onchange="checkReturnHubCapacity()" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-white outline-none">
+                      <option value="H-04">ĐH Bách Khoa – BK Hub (H-04) — Còn 18/30 ô trống</option>
+                      <option value="H-03">Thư viện Trung tâm Hub (H-03) — Còn 14/25 ô trống</option>
+                      <option value="H-02">KTX Khu A Hub (H-02) — Còn 14/30 ô trống</option>
+                      <option value="H-05">KTX Khu B Hub (H-05) — 0/25 ô trống (Đầy chỗ - Test luồng A1)</option>
+                    </select>
+                  </div>
+
+                  <!-- BMS Battery & Sensor Simulation -->
+                  <div class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div>
+                      <label class="block font-semibold text-slate-700 mb-1">Mức pin BMS khi trả xe (%):</label>
+                      <input id="uc04-return-battery" type="number" value="68" min="5" max="100" class="w-full px-2.5 py-1.5 rounded border border-slate-300 text-xs" />
+                      <span class="text-[10px] text-slate-500">Nếu &lt; 30% tự chuyển "Chờ sạc"</span>
+                    </div>
+                    <div class="space-y-1.5 pt-1">
+                      <label class="flex items-center gap-1.5 cursor-pointer">
+                        <input id="uc04-sensor-aligned" type="checkbox" checked class="rounded text-blue-900" />
+                        <span>Xe đã vào đúng khớp chốt</span>
+                      </label>
+                      <label class="flex items-center gap-1.5 cursor-pointer text-amber-800">
+                        <input id="uc04-report-damage" type="checkbox" class="rounded text-amber-600" />
+                        <span>Báo xe hỏng sau chuyến đi</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <button onclick="returnAndLockVehicle()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold flex items-center justify-center gap-1.5 shadow-sm transition">
+                    <i data-lucide="lock" class="w-4 h-4"></i>
+                    <span>Xác nhận Đưa xe vào chốt & Khóa xe</span>
+                  </button>
+
+                  <div id="uc04-feedback" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs space-y-1">
+                    <div class="font-semibold">Tóm tắt hành trình & Hậu điều kiện:</div>
+                    <div id="uc04-summary-text">Hãy mở khóa nhận xe hoặc bấm trả xe để kiểm thử quy trình khóa chốt IoT và phân loại pin BMS.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 3: UC05, UC06 & UC07 (PRIVATE EV PARKING & CHARGING) ==================== -->
+        <section id="tab-uc05" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-6xl mx-auto space-y-6">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Phương tiện Cá nhân: Đặt chỗ đỗ, Lịch sạc & Phiên sạc</h2>
+                <p class="text-xs text-slate-500 mt-0.5">Hỗ trợ sinh viên đi xe điện cá nhân đặt trước vị trí đỗ (ký quỹ 50,000đ) và đăng ký khung giờ sạc tại Hub.</p>
+              </div>
+              <div class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center gap-2 shadow-sm">
+                <i data-lucide="wallet" class="w-4 h-4 text-blue-900"></i>
+                <span>Số dư Ví nội bộ VNU-Pay: <strong id="uc05-wallet-display" class="text-blue-900">120,000 VNĐ</strong></span>
+                <button onclick="topUpWallet()" class="ml-2 px-2 py-0.5 rounded bg-blue-50 text-blue-900 font-semibold hover:bg-blue-100">+ Nạp 50k</button>
+              </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-5">
+              <!-- Column 1: UC05 Reserve Private Parking -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-3.5 shadow-sm flex flex-col justify-between">
+                <div class="space-y-3">
+                  <div class="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-blue-900">Use Case</span>
+                      <h3 class="text-sm font-bold text-slate-900">Đặt trước vị trí đỗ xe cá nhân</h3>
+                    </div>
+                    <span id="uc05-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">AVAILABLE</span>
+                  </div>
+
+                  <div class="space-y-2.5 text-xs">
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Phương tiện cá nhân đã đăng ký:</label>
+                      <select id="uc05-private-vehicle" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                        <option value="VinFast Evo200 (59-X3 882.19)">VinFast Evo200 (59-X3 882.19) • Chuẩn AC Type 2</option>
+                        <option value="Yadea Odora S (60-B1 419.02)">Yadea Odora S (60-B1 419.02) • Chuẩn AC Standard</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Chọn Hub đích & Ô đỗ mong muốn:</label>
+                      <select id="uc05-hub" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                        <option value="H-04|Slot P-12">ĐH Bách Khoa Hub (H-04) – Ô đỗ P-12 (AVAILABLE)</option>
+                        <option value="H-03|Slot P-08">Thư viện Trung tâm (H-03) – Ô đỗ P-08 (AVAILABLE)</option>
+                        <option value="H-02|Slot P-19">KTX Khu A Hub (H-02) – Ô đỗ P-19 (AVAILABLE)</option>
+                      </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                      <div>
+                        <label class="block font-medium text-slate-700 mb-1">Giờ bắt đầu:</label>
+                        <input id="uc05-start" type="time" value="08:00" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300" />
+                      </div>
+                      <div>
+                        <label class="block font-medium text-slate-700 mb-1">Giờ kết thúc:</label>
+                        <input id="uc05-end" type="time" value="11:30" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300" />
+                      </div>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                      <div class="flex justify-between">
+                        <span class="text-slate-500">Phí đỗ xe niêm yết:</span>
+                        <span class="font-semibold">5,000 VNĐ / lượt</span>
+                      </div>
+                      <div class="flex justify-between">
+                        <span class="text-slate-500">Tiền cọc giữ chỗ (tạm giữ):</span>
+                        <span class="font-bold text-blue-900">50,000 VNĐ</span>
+                      </div>
+                      
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                  <button onclick="reservePrivateParking()" class="w-full py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition">
+                    Xác nhận Đặt chỗ đỗ & Ký quỹ
+                  </button>
+                  <button onclick="cancelPrivateParking()" class="w-full py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium text-[11px] transition">
+                    Hủy đơn trước giờ hẹn & Hoàn cọc
+                  </button>
+                  <div id="uc05-feedback" class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    Chưa có đơn đặt chỗ xe cá nhân.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 2: UC06 Schedule Private EV Charging -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-3.5 shadow-sm flex flex-col justify-between">
+                <div class="space-y-3">
+                  <div class="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-blue-900">Use Case</span>
+                      <h3 class="text-sm font-bold text-slate-900">Đăng ký lịch sạc phương tiện</h3>
+                    </div>
+                    <span id="uc06-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">CHỜ ĐƠN UC05</span>
+                  </div>
+
+                  <div class="space-y-2.5 text-xs">
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Liên kết đơn đặt chỗ đỗ (Pre-condition UC05):</label>
+                      <input id="uc06-linked-booking" type="text" readonly value="Chưa có đơn RESERVED (Hãy tạo ở UC05)" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium" />
+                    </div>
+
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Chọn cổng sạc tương thích tại Hub:</label>
+                      <select id="uc06-port" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                        <option value="CHG-BK-02 (AC 3.5kW)">Cổng #CHG-BK-02 (AC Type 2 – 3.5kW) • AVAILABLE</option>
+                        <option value="CHG-BK-05 (Fast DC 30kW)">Cổng #CHG-BK-05 (Fast DC – 30kW) • AVAILABLE</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Khung giờ sạc & Đơn giá điện tham chiếu:</label>
+                      <select id="uc06-tariff" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                        <option value="3000">Giờ thấp điểm (09:00 – 11:00) • 3,000 VNĐ/kWh</option>
+                        <option value="7000">Giờ cao điểm (06:00–09:00 / 16:00–19:30) • 7,000 VNĐ/kWh</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                  <button onclick="schedulePrivateCharging()" class="w-full py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold text-xs transition">
+                    Xác nhận Đăng ký Lịch sạc
+                  </button>
+                  <div id="uc06-feedback" class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    Hãy hoàn tất đặt chỗ đỗ hoặc nhấn đăng ký để hệ thống kiểm tra.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Column 3: UC07 Activate & Terminate Charging Session -->
+              <div class="bg-white rounded-2xl border border-slate-200 p-5 space-y-3.5 shadow-sm flex flex-col justify-between">
+                <div class="space-y-3">
+                  <div class="border-b border-slate-100 pb-2.5 flex items-center justify-between">
+                    <div>
+                      <span class="text-[10px] font-bold uppercase text-emerald-700">Use Case</span>
+                      <h3 class="text-sm font-bold text-slate-900">Kích hoạt & Kết thúc phiên sạc</h3>
+                    </div>
+                    <span id="uc07-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">STANDBY</span>
+                  </div>
+
+                  <div class="space-y-2.5 text-xs">
+                    <div>
+                      <label class="block font-medium text-slate-700 mb-1">Quét QR trụ sạc hoặc Nhập mã PIN (A1):</label>
+                      <input id="uc07-auth-code" type="text" value="CHG-PIN-901" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+                    </div>
+
+                    <!-- Real-time Telemetry Box -->
+                    <div class="p-3.5 rounded-xl bg-slate-900 text-white space-y-2">
+                      <div class="flex items-center justify-between text-[11px] text-slate-400">
+                        <span>VIỄN THÔNG TRỤ SẠC (TELEMETRY)</span>
+                        <span id="uc07-relay-status" class="text-emerald-400 font-semibold">● Relay: OFF</span>
+                      </div>
+                      <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <div class="text-[10px] text-slate-400">Tỷ lệ % Pin</div>
+                          <div id="uc07-soc" class="text-lg font-bold text-emerald-400">42%</div>
+                        </div>
+                        <div>
+                          <div class="text-[10px] text-slate-400">Công suất sạc</div>
+                          <div id="uc07-power" class="text-lg font-bold text-white">0.0 kW</div>
+                        </div>
+                        <div>
+                          <div class="text-[10px] text-slate-400">Điện năng tiêu thụ</div>
+                          <div id="uc07-kwh" class="text-sm font-bold text-blue-300">0.00 kWh</div>
+                        </div>
+                        <div>
+                          <div class="text-[10px] text-slate-400">Chi phí tạm tính</div>
+                          <div id="uc07-cost" class="text-sm font-bold text-amber-300">0 VNĐ</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-2 pt-2">
+                  <div class="grid grid-cols-2 gap-2">
+                    <button onclick="activateChargingSession()" class="py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs transition">
+                      Kích hoạt Sạc
+                    </button>
+                    <button onclick="terminateChargingSession(false)" class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-semibold text-xs transition">
+                      Dừng sạc sớm (A2)
+                    </button>
+                  </div>
+                  <button onclick="terminateChargingSession(true)" class="w-full py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-medium text-[11px] transition">
+                    Giả lập Sự cố Rò điện / Sụt áp – Ngắt khẩn cấp
+                  </button>
+                  <div id="uc07-feedback" class="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                    Sẵn sàng mở khóa cổng sạc khi sinh viên Check-in tại ô đỗ.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 4: UC08 (OPERATOR NETWORK-WIDE MONITORING) ==================== -->
+        <section id="tab-uc08" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-6xl mx-auto space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Giám sát trạng thái toàn mạng lưới</h2>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="uc08-filter" onchange="renderUC08Table()" class="px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium">
+                  <option value="ALL">Lọc: Toàn bộ khu vực ĐHQG-HCM (A1)</option>
+                  <option value="ALERT">Chỉ hiện Hub có cờ Cảnh báo Vàng/Đỏ</option>
+                </select>
+                <button onclick="exportSnapshotUC08()" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>Xuất báo cáo</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Network Table with Color Thresholds (Green / Yellow / Red / Offline) -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+              <table class="w-full min-w-[1100px] text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[11px]">
+                    <th class="py-3.5 px-4">Mã & Tên Mobility Hub</th>
+                    <th class="py-3.5 px-4">Xe khả dụng</th>
+                    <th class="py-3.5 px-4">Tỷ lệ lấp đầy Bãi đỗ</th>
+                    <th class="py-3.5 px-4">Pin TB</th>
+                    <th class="py-3.5 px-4">Cổng sạc (Hoạt động/Lỗi)</th>
+                    <th class="py-3.5 px-4">Trạng thái Tải & Kết nối</th>
+                    <th class="py-3.5 px-4 text-right">Hành động Điều phối</th>
+                  </tr>
+                </thead>
+                <tbody id="uc08-tbody" class="divide-y divide-slate-100">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 5: UC09 (FLEET REDISTRIBUTION DISPATCH) ==================== -->
+        <section id="tab-uc09" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-5xl mx-auto space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Lập lệnh điều phối luân chuyển</h2>
+                <p class="text-xs text-slate-500">Điều chuyển xe từ Hub dư thừa sang Hub thiếu hụt.</p>
+              </div>
+              <button onclick="applyAutoSuggestionUC09()" class="px-4 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-semibold transition">
+                ⚡ Áp dụng phương án đề xuất
+              </button>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6">
+              <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm text-xs">
+                <div class="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Hub Nguồn (Dư thừa xe):</label>
+                    <select id="uc09-source" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                      <option value="H-02">KTX Khu A (H-02) – 28 xe khả dụng</option>
+                      <option value="H-04">ĐH Bách Khoa (H-04) – 18 xe khả dụng</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Hub Đích (Thiếu xe / Cần tiếp nhận):</label>
+                    <select id="uc09-dest" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                      <option value="H-01">Ga Metro ĐHQG (H-01) – Còn 26 ô trống (Thiếu xe)</option>
+                      <option value="H-05">KTX Khu B (H-05) – Còn 0 ô trống (Test lỗi E1)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Số lượng xe luân chuyển (Pin ≥ 40%):</label>
+                    <input id="uc09-qty" type="number" value="6" min="1" max="30" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+                  </div>
+                  <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Đội ngũ vận chuyển (Transporter):</label>
+                    <select id="uc09-team" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                      <option value="Đội Vận chuyển Nội khu #01 (Xe tải nhỏ)">Đội Vận chuyển Nội khu #01 (Xe chuyên dụng)</option>
+                      <option value="Đội Kỹ thuật Cơ động #02">Đội Kỹ thuật Cơ động #02</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input id="uc09-race-cond" type="checkbox" class="rounded text-blue-900" />
+                    <span>Kiểm tra trường hợp xe vừa được đặt trước</span>
+                  </label>
+                </div>
+
+                <button onclick="createRedistributionOrder()" class="w-full py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-sm transition">
+                  Xác nhận Tạo lệnh Điều phối & Khóa xe
+                </button>
+              </div>
+
+              <!-- Dispatch Orders Log -->
+              <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-sm text-xs">
+                <h3 class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">Danh sách Lệnh Điều phối đã phát hành</h3>
+                <div id="uc09-order-list" class="space-y-2.5">
+                  <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <div class="flex justify-between font-bold text-slate-800">
+                      <span>#DSP-2026-01 (Hoàn tất)</span>
+                      <span class="text-emerald-700">5 Xe E-Bike</span>
+                    </div>
+                    <div class="text-slate-500 mt-1">Từ: ĐH Bách Khoa (H-04) → Ga Metro (H-01)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 6: UC10 (SMART CHARGING SCHEDULER) ==================== -->
+        <section id="tab-uc10" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-5xl mx-auto space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Lập và điều chỉnh lịch sạc</h2>
+                <p class="text-xs text-slate-500">Ưu tiên xe theo mức pin và nhu cầu sử dụng.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="optimizeSmartScheduleUC10()" class="px-3.5 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold transition">
+                  ⚡ Tối ưu lịch sạc
+                </button>
+                <button onclick="autoDisconnectFullUC10()" class="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold transition">
+                  Ngắt xe đã đầy
+                </button>
+              </div>
+            </div>
+
+            <!-- Power Limit Bar -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap items-center justify-between gap-4 text-xs shadow-sm">
+              <div>
+                <div class="text-slate-500">Trạm đang chọn: <strong>Ga Metro ĐHQG Hub (H-01)</strong></div>
+                <div class="font-bold text-slate-900 text-sm mt-0.5">Tổng công suất tiêu thụ hiện tại: <span id="uc10-current-kw" class="text-blue-900">38.5 kW</span> / Ngưỡng an toàn: <strong>45.0 kW</strong></div>
+              </div>
+              <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1.5 text-amber-800 cursor-pointer">
+                  <input id="uc10-overload-test" type="checkbox" class="rounded" />
+                  <span>Kiểm tra vượt ngưỡng công suất</span>
+                </label>
+                <button onclick="applySmartScheduleUC10()" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold">
+                  Áp dụng lịch sạc
+                </button>
+              </div>
+            </div>
+
+            <!-- Charging Queue Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[11px]">
+                    <th class="py-3 px-4">Thứ tự</th>
+                    <th class="py-3 px-4">Phương tiện</th>
+                    <th class="py-3 px-4">Phân loại</th>
+                    <th class="py-3 px-4">Mức pin</th>
+                    <th class="py-3 px-4">Chuyến đi tiếp theo</th>
+                    <th class="py-3 px-4">Điểm Ưu tiên</th>
+                    <th class="py-3 px-4">Trạng thái Cổng / Rơ-le</th>
+                    <th class="py-3 px-4 text-right">Can thiệp thủ công</th>
+                  </tr>
+                </thead>
+                <tbody id="uc10-tbody" class="divide-y divide-slate-100">
+                  <!-- Populated by JS -->
+                </tbody>
+              </table>
+            </div>
+            <div id="uc10-feedback" class="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900">
+              Hệ thống sẵn sàng phân bổ công suất sạc thông minh.
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 7: UC11 (HANDLE TECHNICAL INCIDENTS) ==================== -->
+        <section id="tab-uc11" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-5xl mx-auto space-y-5">
+            <div>
+              <h2 class="text-xl font-bold text-slate-900">Xử lý sự cố kỹ thuật</h2>
+              <p class="text-xs text-slate-500">Cách ly tài nguyên lỗi và gửi phiếu bảo trì.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6">
+              <div class="lg:col-span-7 space-y-3" id="uc11-incident-list">
+                <!-- Populated by JS -->
+              </div>
+
+              <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 space-y-3.5 shadow-sm text-xs">
+                <h3 class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">Tạo Phiếu Bảo trì & Cách ly</h3>
+                <div>
+                  <label class="block font-medium text-slate-700 mb-1">Tài nguyên đang chọn xử lý:</label>
+                  <input id="uc11-selected-asset" type="text" readonly value="CHG-M04 • Cổng sạc Ga Metro (Lỗi sụt áp)" class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 font-semibold" />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block font-medium text-slate-700 mb-1">Mức độ ưu tiên:</label>
+                    <select id="uc11-priority" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                      <option value="CRITICAL (Khẩn cấp)">CRITICAL (Khẩn cấp)</option>
+                      <option value="HIGH (Cao)">HIGH (Cao)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block font-medium text-slate-700 mb-1">Đơn vị bảo trì:</label>
+                    <select id="uc11-unit" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                      <option value="Đội Kỹ thuật Điện & Trạm sạc">Đội Kỹ thuật Điện & Trạm sạc</option>
+                      <option value="Đội Bảo trì Cơ khí Xe điện">Đội Bảo trì Cơ khí Xe điện</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900">
+                  <strong>An toàn vận hành:</strong> Chỉ khóa xe sau khi xe đã dừng hẳn tại trạm.
+                </div>
+                <button onclick="isolateAndCreateWorkOrderUC11()" class="w-full py-2.5 rounded-xl bg-red-700 hover:bg-red-800 text-white font-semibold transition">
+                  Cách ly tài nguyên & gửi phiếu bảo trì
+                </button>
+                <div id="uc11-workorder-log" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
+                  <div class="font-semibold text-slate-700">Nhật ký Work Order:</div>
+                  <div id="uc11-wo-content">Chưa có phiếu mới trong phiên này.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 8: UC12 & UC13 (WHAT-IF SIMULATION & RECOMMENDATIONS) ==================== -->
+        <section id="tab-uc12" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-6xl mx-auto space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Mô phỏng kịch bản và áp dụng khuyến nghị</h2>
+                <p class="text-xs text-slate-500">Thử nghiệm trên dữ liệu mô phỏng, không ảnh hưởng vận hành thực tế.</p>
+              </div>
+              <span class="px-3 py-1 rounded-full bg-purple-100 text-purple-900 text-xs font-semibold">
+                Chế độ mô phỏng
+              </span>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6">
+              <!-- UC12 Configuration -->
+              <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-5 space-y-3.5 shadow-sm text-xs">
+                <h3 class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-2">1. Thiết lập Kịch bản Giả định</h3>
+
+                <div>
+                  <label class="block font-semibold text-slate-700 mb-1">Chọn kịch bản:</label>
+                  <select id="uc12-scenario" onchange="loadScenarioPreset()" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white">
+                    <option value="METRO_SURGE">Kịch bản 1: Lượng sinh viên tăng đột biến tại Ga Metro giờ cao điểm</option>
+                    <option value="HUB_FULL">Kịch bản 2: KTX Khu B đầy 100% chỗ đỗ & dồn ứ phương tiện</option>
+                    <option value="CHARGER_FAIL">Kịch bản 3: Nhu cầu sạc tăng cao + Hỏng 50% cổng sạc tại Thư viện</option>
+                  </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2.5">
+                  <div class="flex flex-col">
+                    <label class="block min-h-8 font-medium text-slate-700 mb-1">Khung thời gian mô phỏng (phút):</label>
+                    <input id="uc12-duration" type="number" value="60" class="w-full h-10 px-3 rounded-lg border border-slate-300" />
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="block min-h-8 font-medium text-slate-700 mb-1">Biến động nhu cầu (%):</label>
+                    <input id="uc12-demand" type="number" value="240" class="w-full h-10 px-3 rounded-lg border border-slate-300" />
+                  </div>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                  <button onclick="runWhatIfSimulationUC12()" class="flex-1 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-sm transition">
+                    ▶ Chạy mô phỏng
+                  </button>
+                  <button onclick="saveScenarioTemplateUC12()" class="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition">
+                    Lưu mẫu
+                  </button>
+                </div>
+
+                <div id="uc12-sim-metrics" class="p-3.5 rounded-xl bg-slate-900 text-white space-y-2">
+                  <div class="text-[11px] text-slate-400 font-semibold">DỰ BÁO ĐIỂM NGHẼN</div>
+                  <div id="uc12-metric-text" class="text-xs leading-relaxed text-slate-200">
+                    • Ga Metro ĐHQG (H-01): Nguy cơ cạn kiệt 100% xe sau 14 phút (Thiếu ~12 xe).<br/>
+                    • KTX Khu B (H-05): Quá tải bãi đỗ 108%, cần điều hướng người dùng sang Hub lân cận.
+                  </div>
+                </div>
+              </div>
+
+              <!-- UC13 Evaluate & Apply Recommendations -->
+              <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm text-xs">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                  <h3 class="font-bold text-slate-900 text-sm">2. Đánh giá & Áp dụng Khuyến nghị Điều phối</h3>
+                  <span id="uc13-audit-badge" class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Chờ phê duyệt</span>
+                </div>
+
+                <div id="uc13-rec-list" class="space-y-2.5">
+                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/70 cursor-pointer">
+                    <input type="checkbox" checked class="uc13-chk mt-0.5 rounded text-blue-900" value="Luân chuyển 10 xe từ KTX Khu A sang Ga Metro" />
+                    <div class="flex-1">
+                      <div class="font-bold text-slate-900">Khuyến nghị #1: Điều chuyển xe</div>
+                      <div class="text-slate-600 mt-0.5">Phát lệnh điều chuyển <strong>10 xe E-Bike</strong> từ KTX Khu A (H-02) đến Ga Metro ĐHQG (H-01) trước 07:30.</div>
+                    </div>
+                  </label>
+
+                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/70 cursor-pointer">
+                    <input type="checkbox" checked class="uc13-chk mt-0.5 rounded text-blue-900" value="Ưu tiên công suất sạc nhanh cho 8 xe dùng chung tại Ga Metro" />
+                    <div class="flex-1">
+                      <div class="font-bold text-slate-900">Khuyến nghị #2: Ưu tiên sạc</div>
+                      <div class="text-slate-600 mt-0.5">Tạm nâng độ ưu tiên sạc cho 8 phương tiện dùng chung có pin 35%–50% để kịp phục vụ ca sáng.</div>
+                    </div>
+                  </label>
+
+                  <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50/70 cursor-pointer">
+                    <input type="checkbox" checked class="uc13-chk mt-0.5 rounded text-blue-900" value="Gửi thông báo điều hướng sinh viên từ KTX Khu B sang Thư viện Trung tâm" />
+                    <div class="flex-1">
+                      <div class="font-bold text-slate-900">Khuyến nghị #3: Điều hướng người dùng</div>
+                      <div class="text-slate-600 mt-0.5">Hướng dẫn sinh viên trả xe chuyển sang Hub Thư viện Trung tâm (cách 250m) do KTX Khu B đã đầy chỗ.</div>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="flex flex-wrap gap-2 pt-1">
+                  <button onclick="applyRecommendationsUC13()" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold shadow-sm transition">
+                    ✓ Phê duyệt & Áp dụng Khuyến nghị đã chọn
+                  </button>
+                  <button onclick="rejectRecommendationsUC13()" class="py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition">
+                    Từ chối
+                  </button>
+                </div>
+
+                <div id="uc13-feedback" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600">
+                  Chưa có quyết định nào được thực thi.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB 9: UC14 (SYNC IOT / TELEMETRY DATA) ==================== -->
+        <section id="tab-uc14" class="hidden flex-1 p-6 overflow-y-auto custom-scroll">
+          <div class="max-w-5xl mx-auto space-y-5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 class="text-xl font-bold text-slate-900">Cập nhật dữ liệu cảm biến</h2>
+                <p class="text-xs text-slate-500">Tiếp nhận gói tin định kỳ 5–10s, kiểm tra hợp lệ & timestamp (chống ghi đè dữ liệu trễ) và phát sự kiện (Event Processor).</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="sendTelemetryPacketUC14('VALID')" class="px-3.5 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold">
+                  + Gửi Gói tin Telemetry Hợp lệ
+                </button>
+                <button onclick="sendTelemetryPacketUC14('STALE')" class="px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold">
+                  Test Dữ liệu Trễ Timestamp (Bước 3)
+                </button>
+                <button onclick="sendTelemetryPacketUC14('CORRUPT')" class="px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold">
+                  Test Hỏng gói tin (Luồng E1)
+                </button>
+                <button onclick="sendTelemetryPacketUC14('TIMEOUT')" class="px-3 py-2 rounded-xl bg-slate-800 text-white text-xs font-semibold">
+                  Test Mất kết nối Hub (Luồng E2)
+                </button>
+              </div>
+            </div>
+
+            <div class="bg-slate-900 text-slate-100 rounded-2xl p-5 font-mono text-xs space-y-2 shadow-inner">
+              <div class="flex items-center justify-between text-slate-400 border-b border-slate-800 pb-2">
+                <span>IOT TELEMETRY STREAM & EVENT PROCESSOR LOG</span>
+                <span class="text-emerald-400">● Mode: IoT Simulator (Luồng A1)</span>
+              </div>
+              <div id="uc14-console" class="space-y-1.5 max-h-80 overflow-y-auto custom-scroll">
+                <div class="text-emerald-400">[08:15:05] [ACK] Hub=H-01 | Vehicle=E-102 | Battery=85% | Slot=04 | Timestamp=1757900105 (Valid -> DB Updated)</div>
+                <div class="text-blue-300">[08:15:10] [EVENT] Hub=H-05 | Occupancy=25/25 (100%) -> Triggered FULL_CAPACITY_ALERT to the operator dashboard</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================== INTERACTIVE JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // Dữ liệu mô phỏng (Hard-coded In-memory theo đúng yêu cầu đề bài)
+    const hubsData = {
+      'H-01': {
+        id: 'H-01',
+        name: 'Ga Metro ĐHQG Hub',
+        location: 'Giao lộ Vành Đai ĐHQG & Cổng Trạm Metro Số 1',
+        badge: '● Đang hoạt động • Giờ cao điểm',
+        slotsFree: 26,
+        slotsTotal: 30,
+        chargersFree: 3,
+        chargersTotal: 6,
+        avgBattery: 80,
+        status: 'WARNING', // Ít xe giờ cao điểm
+        vehicles: [
+          { id: 'E-102', type: 'E-Bike', battery: 85, range: 41, slot: 'Slot #04', status: 'AVAILABLE' },
+          { id: 'E-108', type: 'E-Bike', battery: 92, range: 44, slot: 'Slot #09', status: 'AVAILABLE' },
+          { id: 'S-041', type: 'E-Scooter', battery: 64, range: 22, slot: 'Slot #12', status: 'AVAILABLE' }
+        ]
+      },
+      'H-02': {
+        id: 'H-02',
+        name: 'Ký túc xá Khu A Hub',
+        location: 'Cổng chính KTX Khu A – Đường Tạ Quang Bửu',
+        badge: '● Đang hoạt động • Nguồn xe dồi dào',
+        slotsFree: 14,
+        slotsTotal: 30,
+        chargersFree: 5,
+        chargersTotal: 6,
+        avgBattery: 88,
+        status: 'NORMAL',
+        vehicles: [
+          { id: 'E-201', type: 'E-Bike', battery: 94, range: 46, slot: 'Slot #01', status: 'AVAILABLE' },
+          { id: 'E-205', type: 'E-Bike', battery: 78, range: 37, slot: 'Slot #03', status: 'AVAILABLE' },
+          { id: 'S-210', type: 'E-Scooter', battery: 81, range: 35, slot: 'Slot #07', status: 'AVAILABLE' }
+        ]
+      },
+      'H-03': {
+        id: 'H-03',
+        name: 'Thư viện Trung tâm Hub',
+        location: 'Quảng trường Thư viện Trung tâm ĐHQG-HCM',
+        badge: '● Đang hoạt động ổn định',
+        slotsFree: 14,
+        slotsTotal: 25,
+        chargersFree: 4,
+        chargersTotal: 5,
+        avgBattery: 76,
+        status: 'NORMAL',
+        vehicles: [
+          { id: 'E-304', type: 'E-Bike', battery: 74, range: 34, slot: 'Slot #02', status: 'AVAILABLE' },
+          { id: 'S-309', type: 'E-Scooter', battery: 89, range: 39, slot: 'Slot #06', status: 'AVAILABLE' }
+        ]
+      },
+      'H-04': {
+        id: 'H-04',
+        name: 'Trường ĐH Bách Khoa – BK Hub',
+        location: 'Khuôn viên Cơ sở Dĩ An – Khoa KH&KT Máy tính',
+        badge: '● Đang hoạt động ổn định',
+        slotsFree: 18,
+        slotsTotal: 30,
+        chargersFree: 5,
+        chargersTotal: 6,
+        avgBattery: 84,
+        status: 'NORMAL',
+        vehicles: [
+          { id: 'E-401', type: 'E-Bike', battery: 91, range: 44, slot: 'Slot #05', status: 'AVAILABLE' },
+          { id: 'E-412', type: 'E-Bike', battery: 67, range: 30, slot: 'Slot #11', status: 'AVAILABLE' }
+        ]
+      },
+      'H-05': {
+        id: 'H-05',
+        name: 'Ký túc xá Khu B Hub',
+        location: 'Phân khu KTX Khu B – Tuyến xe buýt nội khu',
+        badge: '▲ Cảnh báo: Hết chỗ đỗ (0/25 ô trống)',
+        slotsFree: 0,
+        slotsTotal: 25,
+        chargersFree: 1,
+        chargersTotal: 5,
+        avgBattery: 71,
+        status: 'OVERLOAD',
+        vehicles: [
+          { id: 'E-501', type: 'E-Bike', battery: 82, range: 39, slot: 'Slot #01', status: 'AVAILABLE' },
+          { id: 'S-508', type: 'E-Scooter', battery: 58, range: 20, slot: 'Slot #02', status: 'AVAILABLE' }
+        ]
+      }
+    };
+
+    const demoAccounts = {
+      student: { username: 'student01', password: '123456' },
+      operator: { username: 'operator01', password: '123456' }
+    };
+
+    let currentRole = 'student';
+    let authenticatedRole = null;
+    let pendingLogin = { role: 'student', defaultTab: 'uc01' };
+    let currentHubId = 'H-01';
+    let selectedVehicle = hubsData['H-01'].vehicles[0];
+    let currentVehicleFilter = 'ALL';
+    let filterBattery70 = false;
+    let studentWallet = 120000;
+    let activeSharedBooking = { id: 'RES-2026-089', vehicleId: 'E-102', hubId: 'H-01', slot: 'Slot #04', battery: 85, pin: '4829', activeTrip: false };
+    let activePrivateParking = null;
+    let activePrivateCharging = null;
+
+    let smartQueueData = [
+      { id: 'E-119 (Xe chia sẻ)', type: 'Shared EV', battery: 22, nextTrip: '15 phút nữa', score: 96, status: 'ACTIVE CHARGING (7.0 kW)' },
+      { id: 'S-088 (Xe chia sẻ)', type: 'Shared EV', battery: 28, nextTrip: '25 phút nữa', score: 89, status: 'ACTIVE CHARGING (7.0 kW)' },
+      { id: '59-X3 882.19 (Cá nhân)', type: 'Private EV', battery: 42, nextTrip: '90 phút nữa', score: 64, status: 'WAITING IN QUEUE' },
+      { id: 'E-105 (Xe chia sẻ)', type: 'Shared EV', battery: 96, nextTrip: '120 phút nữa', score: 18, status: 'FULL (96% - Chờ ngắt)' }
+    ];
+
+    let incidentsList = [
+      { id: 'INC-01', asset: 'CHG-M04 • Cổng sạc Ga Metro (H-01)', issue: 'Cảm biến báo sụt áp / lỗi rơ-le dòng điện', state: 'ALERT' },
+      { id: 'INC-02', asset: 'E-Bike #E-311 • Thư viện Trung tâm (H-03)', issue: 'Sinh viên báo phanh trước kêu & lốp non (từ UC04)', state: 'ALERT' }
+    ];
+
+    function showToast(msg) {
+      const el = document.getElementById('global-toast');
+      el.textContent = msg;
+    }
+
+    function enterApp(role, defaultTab) {
+      pendingLogin = { role, defaultTab };
+      const title = role === 'student' ? 'Phân hệ Sinh viên' : 'Phân hệ Vận hành';
+      const description = role === 'student'
+        ? 'Đăng nhập để sử dụng các dịch vụ dành cho sinh viên.'
+        : 'Đăng nhập để truy cập các chức năng giám sát và điều phối vận hành.';
+      document.getElementById('login-title').textContent = title;
+      document.getElementById('login-description').textContent = description;
+      document.getElementById('login-username').value = '';
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('login-modal').classList.remove('hidden');
+      document.getElementById('login-username').focus();
+      lucide.createIcons();
+    }
+
+    function closeLoginModal() {
+      document.getElementById('login-modal').classList.add('hidden');
+    }
+
+    function authenticateUser(event) {
+      event.preventDefault();
+      const username = document.getElementById('login-username').value.trim();
+      const password = document.getElementById('login-password').value;
+      const account = demoAccounts[pendingLogin.role];
+      const error = document.getElementById('login-error');
+
+      if (username !== account.username || password !== account.password) {
+        error.textContent = 'Username hoặc password không chính xác.';
+        error.classList.remove('hidden');
+        return;
+      }
+
+      authenticatedRole = pendingLogin.role;
+      closeLoginModal();
+      document.getElementById('landing-view').classList.add('hidden');
+      document.getElementById('app-view').classList.remove('hidden');
+      switchRole(authenticatedRole, false);
+      switchTab(pendingLogin.defaultTab);
+      showToast('Đăng nhập thành công.');
+      lucide.createIcons();
+    }
+
+    function backToLanding() {
+      authenticatedRole = null;
+      closeLoginModal();
+      document.getElementById('app-view').classList.add('hidden');
+      document.getElementById('landing-view').classList.remove('hidden');
+    }
+
+    function switchRole(role, autoSwitchTab = true) {
+      if (authenticatedRole && role !== authenticatedRole) {
+        showToast('Tài khoản hiện tại không có quyền truy cập phân hệ này.');
+        return;
+      }
+      const btnStudent = document.getElementById('btn-role-student');
+      const btnOperator = document.getElementById('btn-role-operator');
+      currentRole = role;
+      document.getElementById('student-services-menu').classList.toggle('hidden', role !== 'student');
+      document.getElementById('operator-center-menu').classList.toggle('hidden', role !== 'operator');
+      document.getElementById('student-wallet-status').classList.toggle('hidden', role !== 'student');
+      if (role === 'student') {
+        btnStudent.className = 'px-3 py-1.5 rounded-md bg-white text-blue-900 shadow-sm transition';
+        btnOperator.className = 'px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+        document.getElementById('user-avatar').textContent = 'SV';
+        document.getElementById('user-name').textContent = 'Trần Tiến Thành';
+        document.getElementById('user-role-label').textContent = 'MSSV: 2413181';
+        if (autoSwitchTab) switchTab('uc01');
+      } else {
+        btnOperator.className = 'px-3 py-1.5 rounded-md bg-white text-blue-900 shadow-sm transition';
+        btnStudent.className = 'px-3 py-1.5 rounded-md text-slate-600 hover:text-slate-900 transition';
+        document.getElementById('user-avatar').textContent = 'OP';
+        document.getElementById('user-name').textContent = 'Điều phối viên Ca 1';
+        document.getElementById('user-role-label').textContent = 'Role: Network Operator';
+        if (autoSwitchTab) switchTab('uc08');
+      }
+    }
+
+    function switchTab(tabId) {
+      const studentTabs = ['uc01', 'uc03', 'uc05'];
+      const operatorTabs = ['uc08', 'uc09', 'uc10', 'uc11', 'uc12', 'uc14'];
+      const allowedTabs = currentRole === 'student' ? studentTabs : operatorTabs;
+      if (!allowedTabs.includes(tabId)) {
+        tabId = currentRole === 'student' ? 'uc01' : 'uc08';
+      }
+
+      const tabs = ['uc01', 'uc03', 'uc05', 'uc08', 'uc09', 'uc10', 'uc11', 'uc12', 'uc14'];
+      tabs.forEach(t => {
+        document.getElementById('tab-' + t).classList.add('hidden');
+        const navBtn = document.getElementById('nav-' + t);
+        if (navBtn) navBtn.classList.remove('nav-active');
+      });
+      document.getElementById('tab-' + tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('nav-' + tabId);
+      if (activeBtn) activeBtn.classList.add('nav-active');
+
+      if (tabId === 'uc01') renderHubInspector();
+      if (tabId === 'uc08') renderUC08Table();
+      if (tabId === 'uc10') renderUC10Table();
+      if (tabId === 'uc11') renderUC11Incidents();
+      lucide.createIcons();
+    }
+
+    // ==================== UC01 & UC02 FUNCTIONS ====================
+    function selectHub(hubId) {
+      currentHubId = hubId;
+      Object.keys(hubsData).forEach(id => {
+        const pin = document.getElementById('pin-' + id);
+        if (pin) pin.classList.toggle('hub-pin-active', id === hubId);
+      });
+      const hub = hubsData[hubId];
+      if (hub.vehicles.length > 0) {
+        selectedVehicle = hub.vehicles[0];
+      }
+      renderHubInspector();
+      showToast(`UC01: Đã chọn ${hub.name} – Hiển thị danh sách xe và chỗ đỗ thời gian thực.`);
+    }
+
+    function setVehicleFilter(type) {
+      currentVehicleFilter = type;
+      ['all', 'ebike', 'escooter'].forEach(k => {
+        const btn = document.getElementById('filter-' + k);
+        btn.className = 'px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition';
+      });
+      const mapKey = type === 'ALL' ? 'all' : (type === 'E-Bike' ? 'ebike' : 'escooter');
+      document.getElementById('filter-' + mapKey).className = 'px-3 py-1.5 rounded-lg bg-blue-900 text-white font-medium transition';
+      renderHubInspector();
+    }
+
+    function toggleBattery70Filter() {
+      filterBattery70 = !filterBattery70;
+      const btn = document.getElementById('filter-bat70');
+      btn.className = filterBattery70
+        ? 'px-3 py-1.5 rounded-lg bg-blue-900 text-white font-medium transition flex items-center gap-1'
+        : 'px-3 py-1.5 rounded-lg text-slate-700 hover:bg-slate-100 font-medium transition flex items-center gap-1';
+      renderHubInspector();
+    }
+
+    function handleSearchHub(query) {
+      const q = query.toLowerCase();
+      if (q.includes('metro')) selectHub('H-01');
+      else if (q.includes('ktx a') || q.includes('khu a')) selectHub('H-02');
+      else if (q.includes('thư viện') || q.includes('library')) selectHub('H-03');
+      else if (q.includes('bách khoa') || q.includes('bk')) selectHub('H-04');
+      else if (q.includes('ktx b') || q.includes('khu b')) selectHub('H-05');
+    }
+
+    function renderHubInspector() {
+      const hub = hubsData[currentHubId];
+      document.getElementById('detail-hub-id').textContent = 'HUB #' + hub.id;
+      document.getElementById('detail-hub-name').textContent = hub.name;
+      document.getElementById('detail-hub-location').textContent = hub.location;
+      document.getElementById('detail-hub-badge').textContent = hub.badge;
+      document.getElementById('detail-hub-vehicles').textContent = hub.vehicles.length;
+      document.getElementById('detail-hub-slots').innerHTML = `${hub.slotsFree}<span class="text-xs font-normal text-slate-400">/${hub.slotsTotal}</span>`;
+      document.getElementById('detail-hub-chargers').innerHTML = `${hub.chargersFree}<span class="text-xs font-normal text-slate-400">/${hub.chargersTotal} trống</span>`;
+
+      const filtered = hub.vehicles.filter(v => {
+        const matchType = currentVehicleFilter === 'ALL' || v.type === currentVehicleFilter;
+        const matchBat = !filterBattery70 || v.battery >= 70;
+        return matchType && matchBat;
+      });
+
+      document.getElementById('vehicle-list-count').textContent = `${filtered.length} xe phù hợp`;
+      const container = document.getElementById('hub-vehicle-list');
+      container.innerHTML = '';
+
+      filtered.forEach(v => {
+        const isSelected = selectedVehicle && selectedVehicle.id === v.id;
+        const batColor = v.battery >= 70 ? 'text-emerald-600' : 'text-amber-600';
+        const card = document.createElement('div');
+        card.className = `p-3 rounded-xl border ${isSelected ? 'border-blue-800 bg-blue-50/30' : 'border-slate-200 bg-white'} flex items-center justify-between transition`;
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center text-blue-900 font-bold text-xs">
+              ${v.type === 'E-Bike' ? 'EB' : 'ES'}
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-900">${v.type} #${v.id} <span class="text-[10px] font-normal text-slate-500">(${v.slot})</span></div>
+              <div class="text-[11px] flex items-center gap-2 mt-0.5">
+                <span class="font-bold ${batColor}">Pin: ${v.battery}%</span>
+                <span class="text-slate-400">• Quãng đường ~${v.range} km</span>
+              </div>
+            </div>
+          </div>
+          <button onclick="chooseVehicle('${v.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold ${isSelected ? 'bg-blue-900 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}">
+            ${isSelected ? 'Đã chọn' : 'Chọn'}
+          </button>
+        `;
+        container.appendChild(card);
+      });
+
+      if (selectedVehicle) {
+        document.getElementById('res-vehicle-id').textContent = `${selectedVehicle.type} #${selectedVehicle.id}`;
+        document.getElementById('res-vehicle-bat').textContent = `${selectedVehicle.type} • ${selectedVehicle.battery}% (~${selectedVehicle.range} km)`;
+        document.getElementById('res-vehicle-slot').textContent = selectedVehicle.slot;
+      }
+    }
+
+    function chooseVehicle(vId) {
+      const hub = hubsData[currentHubId];
+      const found = hub.vehicles.find(x => x.id === vId);
+      if (found) {
+        selectedVehicle = found;
+        renderHubInspector();
+      }
+    }
+
+    function confirmSharedReservation() {
+      if (!document.getElementById('chk-terms-uc02').checked) {
+        showToast('UC02 Lỗi: Vui lòng đồng ý điều khoản dịch vụ trước khi đặt xe.');
+        return;
+      }
+      if (!selectedVehicle || selectedVehicle.battery <= 30) {
+        showToast('UC02 Thất bại: Phương tiện không đủ chuẩn pin (>30%).');
+        return;
+      }
+      const pinCode = Math.floor(1000 + Math.random() * 9000);
+      activeSharedBooking = {
+        id: 'RES-2026-' + Math.floor(100 + Math.random() * 899),
+        vehicleId: selectedVehicle.id,
+        hubId: currentHubId,
+        slot: selectedVehicle.slot,
+        battery: selectedVehicle.battery,
+        pin: String(pinCode),
+        activeTrip: false
+      };
+
+      document.getElementById('res-status-badge').textContent = 'ĐÃ GIỮ CHỖ (15 PHÚT)';
+      document.getElementById('res-status-badge').className = 'px-2 py-0.5 rounded bg-blue-900 text-white text-[10px] font-semibold';
+      document.getElementById('uc03-booking-id').textContent = activeSharedBooking.id;
+      document.getElementById('uc03-vehicle-info').textContent = `${selectedVehicle.type} #${selectedVehicle.id} • ${selectedVehicle.slot} (${hubsData[currentHubId].name})`;
+      document.getElementById('uc03-battery-info').textContent = `${selectedVehicle.battery}% (Đạt chuẩn > 30%)`;
+      document.getElementById('uc03-pin-display').textContent = `PIN: ${activeSharedBooking.pin} / QR: ${selectedVehicle.id}`;
+      document.getElementById('uc03-input-code').value = selectedVehicle.id;
+      document.getElementById('side-trip-badge').classList.remove('hidden');
+
+      showToast(`UC02 Thành công: Đã giữ xe #${selectedVehicle.id} trong 15 phút (Mã PIN: ${pinCode}). Chuyển sang UC03 để mở khóa.`);
+    }
+
+    // ==================== UC03 & UC04 FUNCTIONS ====================
+    function unlockAndPickupVehicle() {
+      const code = document.getElementById('uc03-input-code').value.trim();
+      const unplugged = document.getElementById('uc03-cable-unplugged').checked;
+      const fb = document.getElementById('uc03-feedback');
+
+      if (!unplugged) {
+        fb.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs';
+        fb.textContent = 'Exception E3 (UC03): Phương tiện vẫn đang cắm dây sạc tại trụ! Vui lòng rút cáp sạc an toàn trước khi mở khóa.';
+        return;
+      }
+      if (code !== activeSharedBooking.vehicleId && code !== activeSharedBooking.pin) {
+        fb.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs';
+        fb.textContent = `Exception E2 (UC03): Mã xe/PIN "${code}" không khớp với đơn đặt trước (${activeSharedBooking.vehicleId}).`;
+        return;
+      }
+
+      activeSharedBooking.activeTrip = true;
+      document.getElementById('uc03-status-pill').textContent = 'ĐÃ NHẬN XE • ĐANG DI CHUYỂN';
+      document.getElementById('uc03-status-pill').className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+      document.getElementById('uc04-trip-badge').textContent = `Đang đi xe #${activeSharedBooking.vehicleId}`;
+      document.getElementById('uc04-trip-badge').className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-900';
+
+      fb.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs';
+      fb.textContent = `UC03 Thành công: Chốt đỗ ${activeSharedBooking.slot} đã mở khóa! Trạng thái xe chuyển sang "Đang sử dụng", vị trí đỗ cập nhật thành "Trống".`;
+      showToast(`UC03: Đã mở khóa phương tiện #${activeSharedBooking.vehicleId}. Chuyến đi bắt đầu!`);
+    }
+
+    function reportIssueBeforePickup() {
+      const fb = document.getElementById('uc03-feedback');
+      fb.className = 'p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs';
+      fb.textContent = 'Alternative Flow A2 (UC03): Đã ghi nhận báo cáo xe hỏng trước khi nhận, khóa xe sang trạng thái "Chờ kiểm tra" và tự động đổi sang xe #E-108 (Pin 92%) cùng Hub.';
+      activeSharedBooking.vehicleId = 'E-108';
+      document.getElementById('uc03-input-code').value = 'E-108';
+      document.getElementById('uc03-vehicle-info').textContent = 'E-Bike #E-108 • Slot #09 (Xe thay thế tự động)';
+    }
+
+    function checkReturnHubCapacity() {
+      const destId = document.getElementById('uc04-dest-hub').value;
+      const summary = document.getElementById('uc04-summary-text');
+      if (destId === 'H-05') {
+        summary.innerHTML = `<span class="text-red-700 font-semibold">Alternative Flow A1 (UC04): Hub KTX Khu B hiện đã đầy chỗ đỗ (0/25)! Hệ thống đề xuất chuyển hướng sang Thư viện Trung tâm Hub (H-03) còn 14 ô trống.</span>`;
+      } else {
+        summary.textContent = `Hub đích ${hubsData[destId].name} còn ${hubsData[destId].slotsFree} ô đỗ trống. Chỉ định chốt đỗ tự động: Slot #15.`;
+      }
+    }
+
+    function returnAndLockVehicle() {
+      const destId = document.getElementById('uc04-dest-hub').value;
+      const bat = parseInt(document.getElementById('uc04-return-battery').value, 10) || 50;
+      const aligned = document.getElementById('uc04-sensor-aligned').checked;
+      const damaged = document.getElementById('uc04-report-damage').checked;
+      const summary = document.getElementById('uc04-summary-text');
+
+      if (destId === 'H-05') {
+        summary.innerHTML = `<span class="text-red-700 font-bold">Từ chối trả xe (Luồng A1):</span> Hub KTX Khu B đã hết chỗ đỗ khả dụng. Vui lòng chọn Hub lân cận (ĐH Bách Khoa hoặc Thư viện Trung tâm).`;
+        return;
+      }
+      if (!aligned) {
+        summary.innerHTML = `<span class="text-red-700 font-bold">Exception E1 (UC04):</span> Cảm biến IoT báo xe chưa vào đúng khớp chốt đỗ! Vui lòng đẩy sát xe vào rãnh khóa.`;
+        return;
+      }
+
+      let nextVehicleState = 'Sẵn sàng';
+      if (damaged) nextVehicleState = 'Chờ kiểm tra kỹ thuật (Luồng A2)';
+      else if (bat < 30) nextVehicleState = 'Hàng đợi Chờ sạc (Pin < 30%)';
+
+      activeSharedBooking.activeTrip = false;
+      document.getElementById('uc04-trip-badge').textContent = 'Đã kết thúc hành trình';
+      document.getElementById('uc04-trip-badge').className = 'px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800';
+
+      summary.innerHTML = `
+        <div class="text-emerald-800 font-bold">UC04 Hoàn tất: Đã khóa chốt cứng & ngắt động cơ an toàn tại ${hubsData[destId].name}!</div>
+        <div>• Thời gian di chuyển: 18 phút (Quãng đường: 3.4 km) • Cước tạm tính: 5,000 VNĐ</div>
+        <div>• Mức pin BMS đọc được: <strong>${bat}%</strong> → Trạng thái xe mới: <strong>${nextVehicleState}</strong></div>
+      `;
+      showToast(`UC04 Thành công: Đã trả xe #${activeSharedBooking.vehicleId} tại ${hubsData[destId].name}.`);
+    }
+
+    // ==================== UC05, UC06 & UC07 FUNCTIONS ====================
+    function updateWalletUI() {
+      document.getElementById('uc05-wallet-display').textContent = studentWallet.toLocaleString('vi-VN') + ' VNĐ';
+      document.getElementById('wallet-balance-side').textContent = studentWallet.toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    function topUpWallet() {
+      studentWallet += 50000;
+      updateWalletUI();
+      showToast('Ví VNU-Pay: Đã nạp thêm 50,000 VNĐ.');
+    }
+
+    function reservePrivateParking() {
+      const start = document.getElementById('uc05-start').value;
+      const end = document.getElementById('uc05-end').value;
+      const fb = document.getElementById('uc05-feedback');
+
+      if (start >= end) {
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700';
+        fb.textContent = 'Exception E1 (UC05): Thời gian kết thúc phải lớn hơn thời gian bắt đầu!';
+        return;
+      }
+      if (studentWallet < 50000) {
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700';
+        fb.textContent = 'Exception E3 (UC05): Số dư ví dưới 50,000 VNĐ. Vui lòng nạp thêm tiền để ký quỹ đặt cọc.';
+        return;
+      }
+
+      studentWallet -= 50000;
+      updateWalletUI();
+      const hubSlot = document.getElementById('uc05-hub').value;
+      activePrivateParking = {
+        id: 'PRV-2026-501',
+        vehicle: document.getElementById('uc05-private-vehicle').value,
+        hubSlot: hubSlot,
+        start: start,
+        end: end
+      };
+
+      document.getElementById('uc05-state-badge').textContent = 'RESERVED';
+      document.getElementById('uc05-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900 text-white';
+      document.getElementById('uc06-linked-booking').value = `${activePrivateParking.id} • ${hubSlot} (${start}–${end})`;
+      document.getElementById('uc06-state-badge').textContent = 'SẴN SÀNG ĐẶT SẠC';
+
+      fb.className = 'p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900';
+      fb.innerHTML = `<strong>UC05 Thành công:</strong> Mã đơn <strong>${activePrivateParking.id}</strong>. Đã tạm giữ cọc 50,000đ, chuyển ô đỗ sang RESERVED (giữ 15p từ ${start}). Có thể chuyển tiếp sang UC06 (Luồng A2).`;
+      showToast('UC05: Đã đặt chỗ đỗ xe cá nhân thành công! Hãy đăng ký lịch sạc ở cột UC06.');
+    }
+
+    function cancelPrivateParking() {
+      if (!activePrivateParking) return;
+      studentWallet += 50000;
+      updateWalletUI();
+      activePrivateParking = null;
+      activePrivateCharging = null;
+      document.getElementById('uc05-state-badge').textContent = 'AVAILABLE';
+      document.getElementById('uc05-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700';
+      document.getElementById('uc06-linked-booking').value = 'Đã hủy đơn đỗ xe (Cổng sạc tự giải phóng - E3)';
+      document.getElementById('uc05-feedback').textContent = 'Alternative Flow A3 (UC05): Đã hủy đơn trước giờ hẹn, hoàn trả 50,000đ tiền cọc và đưa ô đỗ về AVAILABLE.';
+    }
+
+    function schedulePrivateCharging() {
+      const fb = document.getElementById('uc06-feedback');
+      if (!activePrivateParking) {
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700';
+        fb.textContent = 'Pre-Condition UC06 chưa thỏa: Bạn phải có đơn đặt chỗ đỗ xe cá nhân còn hiệu lực (RESERVED) từ UC05 trước!';
+        return;
+      }
+      const port = document.getElementById('uc06-port').value;
+      const tariff = parseInt(document.getElementById('uc06-tariff').value, 10);
+      activePrivateCharging = {
+        port: port,
+        tariff: tariff,
+        pinCode: 'CHG-PIN-901'
+      };
+
+      document.getElementById('uc06-state-badge').textContent = 'RESERVED';
+      document.getElementById('uc06-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-blue-900 text-white';
+      document.getElementById('uc07-auth-code').value = activePrivateCharging.pinCode;
+
+      fb.className = 'p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900';
+      fb.innerHTML = `<strong>UC06 Thành công:</strong> Đã khóa cổng <strong>${port}</strong> sang RESERVED (Đơn giá: ${tariff.toLocaleString('vi-VN')}đ/kWh). Cấp mã mở trụ: <strong>${activePrivateCharging.pinCode}</strong>.`;
+      showToast('UC06: Đăng ký lịch sạc xe cá nhân thành công! Chuyển sang cột UC07 để kích hoạt sạc.');
+    }
+
+    function activateChargingSession() {
+      const code = document.getElementById('uc07-auth-code').value.trim();
+      const fb = document.getElementById('uc07-feedback');
+
+      if (!activePrivateCharging) {
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700';
+        fb.textContent = 'Exception E2 (UC07): Chưa có lịch sạc hợp lệ từ UC06! Vui lòng đăng ký lịch sạc ở cột UC06 trước.';
+        return;
+      }
+      if (code !== activePrivateCharging.pinCode) {
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-700';
+        fb.textContent = 'Exception E1 (UC07): Mã QR / Mã PIN trụ sạc không khớp! Hệ thống từ chối mở khóa cổng sạc.';
+        return;
+      }
+
+      const kwh = 1.85;
+      const cost = Math.round(kwh * activePrivateCharging.tariff);
+
+      document.getElementById('uc07-state-badge').textContent = 'CHARGING';
+      document.getElementById('uc07-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-700 text-white';
+      document.getElementById('uc07-relay-status').textContent = '● Relay: ON (Đang cấp điện)';
+      document.getElementById('uc07-soc').textContent = '78%';
+      document.getElementById('uc07-power').textContent = '3.5 kW';
+      document.getElementById('uc07-kwh').textContent = `${kwh.toFixed(2)} kWh`;
+      document.getElementById('uc07-cost').textContent = `${cost.toLocaleString('vi-VN')} VNĐ`;
+
+      fb.className = 'p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-900';
+      fb.innerHTML = `<strong>UC07 Đang sạc:</strong> Đã đóng rơ-le cấp nguồn tại cổng <strong>${activePrivateCharging.port}</strong>. Dữ liệu viễn thông (SoC, kWh) đang cập nhật thời gian thực.`;
+      showToast('UC07: Đã kích hoạt phiên sạc xe điện cá nhân!');
+    }
+
+    function terminateChargingSession(isEmergencyFault) {
+      const fb = document.getElementById('uc07-feedback');
+      document.getElementById('uc07-relay-status').textContent = '● Relay: OFF (Đã ngắt điện)';
+      document.getElementById('uc07-power').textContent = '0.0 kW';
+
+      if (isEmergencyFault) {
+        document.getElementById('uc07-state-badge').textContent = 'FAULTED (E3)';
+        document.getElementById('uc07-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-red-600 text-white';
+        fb.className = 'p-2.5 rounded-lg bg-red-50 border border-red-200 text-[11px] text-red-800';
+        fb.innerHTML = `<strong>Exception E3 (UC07):</strong> Phát hiện sự cố rò điện / sụt áp đột ngột! Hệ thống đã tự động ngắt rơ-le khẩn cấp, chốt chỉ số điện năng đã sạc và gửi cảnh báo cho bộ phận kỹ thuật (UC11).`;
+        showToast('UC07 Cảnh báo E3: Ngắt điện khẩn cấp do sự cố kỹ thuật tại trụ sạc!');
+      } else {
+        document.getElementById('uc07-state-badge').textContent = 'COMPLETED';
+        document.getElementById('uc07-state-badge').className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-200 text-slate-800';
+        fb.className = 'p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-900';
+        fb.innerHTML = `<strong>UC07 Kết thúc (Main Flow / A2):</strong> Đã ngắt dòng điện an toàn, chốt chỉ số kWh tiêu thụ cộng vào hóa đơn tổng và giải phóng cổng sạc về <strong>AVAILABLE</strong>.`;
+        showToast('UC07: Đã kết thúc phiên sạc an toàn và giải phóng cổng sạc.');
+      }
+    }
+
+    // ==================== UC08 FUNCTIONS (NETWORK MONITORING) ====================
+    function renderUC08Table() {
+      const filter = document.getElementById('uc08-filter').value;
+      const tbody = document.getElementById('uc08-tbody');
+      tbody.innerHTML = '';
+
+      Object.values(hubsData).forEach(h => {
+        const isAlert = h.status !== 'NORMAL';
+        if (filter === 'ALERT' && !isAlert) return;
+
+        const usedSlots = h.slotsTotal - h.slotsFree;
+        const occRate = Math.round((usedSlots / h.slotsTotal) * 100);
+
+        let badgeHtml = `<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">● Xanh: Bình thường</span>`;
+        if (h.status === 'WARNING') {
+          badgeHtml = `<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 font-semibold">▲ Vàng: Thiếu xe (${h.vehicles.length} xe)</span>`;
+        } else if (h.status === 'OVERLOAD') {
+          badgeHtml = `<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold">■ Đỏ: Đầy bãi đỗ (${occRate}%)</span>`;
+        } else if (h.status === 'OFFLINE') {
+          badgeHtml = `<span class="inline-block whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800 text-white font-semibold">✕ Mất kết nối (Offline - E1)</span>`;
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50/80 transition';
+        tr.innerHTML = `
+          <td class="py-3.5 px-4">
+            <div class="font-bold text-slate-900">${h.name}</div>
+            <div class="text-[11px] text-slate-500">Mã trạm: ${h.id} • ${h.location}</div>
+          </td>
+          <td class="py-3.5 px-4 font-bold text-blue-900">${h.vehicles.length} xe</td>
+          <td class="py-3.5 px-4">
+            <div class="font-semibold text-slate-800">${usedSlots}/${h.slotsTotal} ô (${occRate}%)</div>
+            <div class="w-28 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
+              <div class="h-full ${occRate >= 90 ? 'bg-red-600' : 'bg-blue-800'}" style="width: ${occRate}%"></div>
+            </div>
+          </td>
+          <td class="py-3.5 px-4 font-semibold text-emerald-700">${h.avgBattery}%</td>
+          <td class="py-3.5 px-4">${h.chargersFree}/${h.chargersTotal} trống ${h.id === 'H-01' ? '<span class="text-red-600 font-semibold">(1 lỗi)</span>' : ''}</td>
+          <td class="py-3.5 px-4">${badgeHtml}</td>
+          <td class="py-3.5 px-4 text-right">
+            <button onclick="switchTab('uc09')" class="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 font-semibold">
+              Điều phối
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportSnapshotUC08() {
+      showToast('Đã kết xuất báo cáo nhanh tình trạng tải mạng lưới.');
+    }
+
+    // ==================== UC09 FUNCTIONS (FLEET REDISTRIBUTION) ====================
+    function applyAutoSuggestionUC09() {
+      document.getElementById('uc09-source').value = 'H-02';
+      document.getElementById('uc09-dest').value = 'H-01';
+      document.getElementById('uc09-qty').value = 8;
+      showToast('Alternative Flow A1: Đã nạp đề xuất tự động — Chuyển 8 xe có mức pin cao nhất từ KTX Khu A sang Ga Metro.');
+    }
+
+    function createRedistributionOrder() {
+      const src = document.getElementById('uc09-source').value;
+      const dst = document.getElementById('uc09-dest').value;
+      let qty = parseInt(document.getElementById('uc09-qty').value, 10) || 5;
+      const team = document.getElementById('uc09-team').value;
+      const raceCond = document.getElementById('uc09-race-cond').checked;
+
+      if (dst === 'H-05') {
+        showToast('Exception E1: Hub đích KTX Khu B không đủ chỗ đỗ trống tiếp nhận (0/25)! Vui lòng giảm số lượng xe hoặc chọn Hub khác.');
+        return;
+      }
+
+      let note = 'Các xe đã khóa trạng thái RELOCATING';
+      if (raceCond) {
+        note = 'Một xe vừa được đặt trước, hệ thống đã tự động thay bằng xe tương đương (Pin ≥ 40%)';
+      }
+
+      const list = document.getElementById('uc09-order-list');
+      const item = document.createElement('div');
+      item.className = 'p-3 rounded-xl bg-blue-50/60 border border-blue-200 space-y-1';
+      item.innerHTML = `
+        <div class="flex justify-between font-bold text-blue-950">
+          <span>#DSP-2026-0${Math.floor(2 + Math.random() * 8)} (RELOCATING)</span>
+          <span class="text-blue-900">${qty} Phương tiện</span>
+        </div>
+        <div class="text-slate-600">Từ: <strong>${hubsData[src].name}</strong> → <strong>${hubsData[dst].name}</strong></div>
+        <div class="text-[11px] text-slate-500">Đơn vị: ${team} • ${note}</div>
+      `;
+      list.prepend(item);
+      showToast(`Thành công: Đã phát lệnh luân chuyển ${qty} xe từ ${src} sang ${dst}.`);
+    }
+
+    // ==================== UC10 FUNCTIONS (SMART CHARGING SCHEDULER) ====================
+    function renderUC10Table() {
+      const tbody = document.getElementById('uc10-tbody');
+      tbody.innerHTML = '';
+      smartQueueData.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 transition';
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-slate-900">#${idx + 1}</td>
+          <td class="py-3 px-4 font-bold text-blue-900">${item.id}</td>
+          <td class="py-3 px-4">${item.type === 'Shared EV' ? '<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-900 font-semibold">Xe dùng chung (Ưu tiên)</span>' : '<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">Xe cá nhân</span>'}</td>
+          <td class="py-3 px-4 font-bold ${item.battery < 30 ? 'text-red-600' : 'text-emerald-700'}">${item.battery}%</td>
+          <td class="py-3 px-4 text-slate-600">${item.nextTrip}</td>
+          <td class="py-3 px-4 font-bold text-slate-900">${item.score} điểm</td>
+          <td class="py-3 px-4 font-semibold text-slate-700">${item.status}</td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="boostEmergencyChargeUC10(${idx})" class="px-2.5 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold">
+              Gán Sạc Khẩn cấp
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function optimizeSmartScheduleUC10() {
+      smartQueueData.sort((a, b) => b.score - a.score);
+      renderUC10Table();
+      document.getElementById('uc10-feedback').textContent = 'Bước 4: Đã chạy thuật toán tính điểm ưu tiên (dựa trên mức pin, thời gian chuyến đi kế tiếp và ưu tiên xe dùng chung).';
+      showToast('Đã sắp xếp tối ưu hàng đợi sạc thông minh!');
+    }
+
+    function boostEmergencyChargeUC10(index) {
+      smartQueueData[index].score = 99;
+      smartQueueData[index].status = 'EMERGENCY PRIORITY (7.0 kW)';
+      optimizeSmartScheduleUC10();
+      showToast(`Bước 5: Operator đã can thiệp thủ công gán nhãn Sạc Khẩn cấp cho ${smartQueueData[0].id}.`);
+    }
+
+    function autoDisconnectFullUC10() {
+      smartQueueData = smartQueueData.map(x => {
+        if (x.battery >= 95) {
+          return { ...x, status: 'AUTO-DISCONNECTED (≥95% - Luồng A1)' };
+        }
+        return x;
+      });
+      renderUC10Table();
+      document.getElementById('uc10-current-kw').textContent = '31.5 kW';
+      document.getElementById('uc10-feedback').textContent = 'Alternative Flow A1: Hệ thống tự động ngắt rơ-le các phương tiện đã nạp đầy ≥ 95% để nhường công suất cho hàng đợi.';
+    }
+
+    function applySmartScheduleUC10() {
+      const overload = document.getElementById('uc10-overload-test').checked;
+      const fb = document.getElementById('uc10-feedback');
+      if (overload) {
+        fb.className = 'p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 font-semibold';
+        fb.textContent = 'Exception E1: Vượt quá công suất an toàn của trạm điện Hub (quá tải +6.5 kW so với ngưỡng 45.0 kW)! Vui lòng giảm số lượng xe sạc đồng thời.';
+        return;
+      }
+      fb.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 font-semibold';
+      fb.textContent = 'Thành công: Đã lưu lịch sạc mới vào Database, phát tín hiệu đóng/ngắt rơ-le tới các trụ sạc và cập nhật thời gian sạc dự kiến.';
+      showToast('Áp dụng lịch sạc thông minh thành công!');
+    }
+
+    // ==================== UC11 FUNCTIONS (TECHNICAL INCIDENT HANDLING) ====================
+    function renderUC11Incidents() {
+      const container = document.getElementById('uc11-incident-list');
+      container.innerHTML = '';
+      incidentsList.forEach(inc => {
+        const isIsolated = inc.state === 'ISOLATED';
+        const div = document.createElement('div');
+        div.className = `p-4 rounded-2xl border ${isIsolated ? 'border-slate-200 bg-slate-50' : 'border-red-200 bg-white'} shadow-sm flex items-center justify-between gap-4 text-xs`;
+        div.innerHTML = `
+          <div class="space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded font-bold text-[10px] ${isIsolated ? 'bg-slate-700 text-white' : 'bg-red-100 text-red-700'}">
+                ${isIsolated ? 'OUT_OF_SERVICE / FAULTED' : 'CẢNH BÁO SỰ CỐ'}
+              </span>
+              <span class="font-bold text-slate-900">${inc.asset}</span>
+            </div>
+            <div class="text-slate-600">Mô tả lỗi: ${inc.issue}</div>
+          </div>
+          <button onclick="selectIncidentUC11('${inc.asset}')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold shrink-0">
+            Chọn xử lý
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function selectIncidentUC11(assetName) {
+      document.getElementById('uc11-selected-asset').value = assetName;
+    }
+
+    function isolateAndCreateWorkOrderUC11() {
+      const asset = document.getElementById('uc11-selected-asset').value;
+      const prio = document.getElementById('uc11-priority').value;
+      const unit = document.getElementById('uc11-unit').value;
+      const woId = 'WO-2026-' + Math.floor(100 + Math.random() * 899);
+
+      incidentsList = incidentsList.map(inc => inc.asset === asset ? { ...inc, state: 'ISOLATED' } : inc);
+      renderUC11Incidents();
+
+      document.getElementById('uc11-wo-content').innerHTML = `
+        <div class="text-emerald-800 font-bold">Đã tạo mã phiếu: ${woId} (Trạng thái: FAULTED / Cách ly)</div>
+        <div>• Tài nguyên: ${asset}</div>
+        <div>• Mức ưu tiên: ${prio} • Đơn vị: ${unit}</div>
+        <div>• Đã ngắt rơ-le / khóa chốt cơ học & tự động đề xuất đổi tài nguyên thay thế cho SV bị ảnh hưởng (Luồng A3).</div>
+      `;
+      showToast(`UC11 Thành công: Đã cách ly "${asset}" và gửi phiếu bảo trì ${woId}.`);
+    }
+
+    // ==================== UC12 & UC13 FUNCTIONS (WHAT-IF SIMULATION) ====================
+    function loadScenarioPreset() {
+      const val = document.getElementById('uc12-scenario').value;
+      if (val === 'METRO_SURGE') {
+        document.getElementById('uc12-duration').value = 60;
+        document.getElementById('uc12-demand').value = 240;
+      } else if (val === 'HUB_FULL') {
+        document.getElementById('uc12-duration').value = 90;
+        document.getElementById('uc12-demand').value = 180;
+      } else {
+        document.getElementById('uc12-duration').value = 120;
+        document.getElementById('uc12-demand').value = 200;
+      }
+    }
+
+    function runWhatIfSimulationUC12() {
+      const dur = parseInt(document.getElementById('uc12-duration').value, 10);
+      const dem = parseInt(document.getElementById('uc12-demand').value, 10);
+      const metricBox = document.getElementById('uc12-metric-text');
+
+      if (dur <= 0 || dem <= 0 || dur > 480) {
+        metricBox.innerHTML = `<span class="text-red-400 font-bold">Exception E1: Tham số cấu hình phi logic (Thời gian âm hoặc vượt giới hạn)! Hệ thống đã dừng phiên chạy.</span>`;
+        return;
+      }
+
+      metricBox.innerHTML = `
+        <div class="text-emerald-400 font-semibold">✓ Đã chạy xong mô phỏng (${dur} phút, nhu cầu ${dem}%):</div>
+        <div>• Ga Metro ĐHQG (H-01): Tỷ lệ đáp ứng giảm còn 42% nếu không bổ sung thêm 10 xe.</div>
+        <div>• Trạm sạc Thư viện (H-03): Thời gian chờ sạc trung bình tăng lên 28 phút.</div>
+        <div>• Đã sinh 03 khuyến nghị điều phối sang bảng bên phải.</div>
+      `;
+      document.getElementById('uc13-audit-badge').textContent = 'Sẵn sàng phê duyệt';
+      showToast('Hoàn tất: Mô phỏng đã hoàn thành!');
+    }
+
+    function saveScenarioTemplateUC12() {
+      showToast('Đã lưu cấu hình mẫu kịch bản để tái sử dụng.');
+    }
+
+    function applyRecommendationsUC13() {
+      const checks = Array.from(document.querySelectorAll('.uc13-chk:checked')).map(c => c.value);
+      const fb = document.getElementById('uc13-feedback');
+
+      if (checks.length === 0) {
+        fb.textContent = 'Vui lòng tích chọn ít nhất 1 khuyến nghị để áp dụng (hoặc bấm Từ chối ở nút bên cạnh).';
+        return;
+      }
+
+      document.getElementById('uc13-audit-badge').textContent = 'ĐÃ ÁP DỤNG';
+      document.getElementById('uc13-audit-badge').className = 'px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold';
+      fb.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900';
+      fb.innerHTML = `
+        <div class="font-bold">Thành công (Đã áp dụng ${checks.length}/3 khuyến nghị):</div>
+        <div>• Tự động kích hoạt lệnh điều phối xe, cập nhật hàng đợi sạc & gửi thông báo cho sinh viên.</div>
+        <div>• Đã ghi nhận thời điểm phê duyệt: ${new Date().toLocaleTimeString('vi-VN')}</div>
+      `;
+      showToast(`Đã phê duyệt và thực thi ${checks.length} khuyến nghị điều phối lên hệ thống thực tế!`);
+    }
+
+    function rejectRecommendationsUC13() {
+      document.getElementById('uc13-audit-badge').textContent = 'ĐÃ ĐÓNG / TỪ CHỐI';
+      document.getElementById('uc13-audit-badge').className = 'px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px] font-bold';
+      const fb = document.getElementById('uc13-feedback');
+      fb.className = 'p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900';
+      fb.textContent = 'Người vận hành đã từ chối áp dụng bộ khuyến nghị. Trạng thái kịch bản chuyển thành "Đã đóng".';
+    }
+
+    // ==================== UC14 FUNCTIONS (IOT TELEMETRY SYNC) ====================
+    function sendTelemetryPacketUC14(mode) {
+      const consoleEl = document.getElementById('uc14-console');
+      const now = new Date().toLocaleTimeString('vi-VN');
+      const line = document.createElement('div');
+
+      if (mode === 'VALID') {
+        line.className = 'text-emerald-400';
+        line.textContent = `[${now}] [VALID PACKET] Hub=H-04 (ĐH Bách Khoa) | Vehicle=E-401 | SoC=91% | FreeSlots=18/30 -> DB Updated & LED Board Synced.`;
+      } else if (mode === 'STALE') {
+        line.className = 'text-amber-300';
+        line.textContent = `[${now}] [IGNORED - STALE TIMESTAMP] Bước 3: Gói tin từ Hub=H-02 có timestamp cũ hơn bản ghi hiện hành -> Chặn ghi đè dữ liệu trễ.`;
+      } else if (mode === 'CORRUPT') {
+        line.className = 'text-red-400';
+        line.textContent = `[${now}] [EXCEPTION E1 - CORRUPT PAYLOAD] Gói tin sai định dạng JSON/Checksum từ cảm biến chốt đỗ -> Đã loại bỏ gói tin & ghi System Log.`;
+      } else if (mode === 'TIMEOUT') {
+        hubsData['H-03'].status = 'OFFLINE';
+        line.className = 'text-purple-300';
+        line.textContent = `[${now}] [EXCEPTION E2 - SENSOR TIMEOUT] Hub=H-03 (Thư viện Trung tâm) không phản hồi quá 30s -> Đánh dấu "Mất kết nối (Offline)" & gửi cảnh báo tới bộ phận vận hành và kỹ thuật.`;
+      }
+
+      consoleEl.prepend(line);
+      showToast(`Telemetry: Đã xử lý gói tin cảm biến (${mode}).`);
+    }
+
+    // Khởi tạo ban đầu
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      renderHubInspector();
+    });
+  </script>
+</body>
+</html>

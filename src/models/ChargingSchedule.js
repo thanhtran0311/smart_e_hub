@@ -1,0 +1,1 @@
+// ChargingSchedule - dang ky lich sac (UC06) va hang doi sac thong minh (UC10). TODO: priorityScore, manualPriority

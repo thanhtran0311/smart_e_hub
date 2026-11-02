@@ -1,0 +1,1 @@
+// charging-scheduler-service - tinh diem uu tien, xep hang doi sac, tu ngat khi pin >= 95%, kiem tra qua tai cong suat (UC10). TODO

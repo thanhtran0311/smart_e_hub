@@ -1,0 +1,1 @@
+// Notification - thong bao cho nguoi dung hoac vai tro. TODO: type, refType, refId, read

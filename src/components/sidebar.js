@@ -1,0 +1,1 @@
+// sidebar - controller cho sidebar.html: render du lieu tu app-state va gan su kien. TODO
