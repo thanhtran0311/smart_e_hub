@@ -1,1 +1,0 @@
-// event-bus - publish/subscribe su kien de cac man hinh cap nhat khi state thay doi. TODO

@@ -1,0 +1,27 @@
+@startuml submit3-deployment
+title Smart E-Mobility Hub - Deployment View
+
+actor "Sinh viên" as Student
+actor Operator
+
+node "Máy cá nhân" {
+  node "Máy chủ tĩnh cục bộ :8000" as Server <<execution environment>> {
+    artifact "index.html" as Index
+    artifact "src/ và assets/" as Source
+    artifact "data/*.json" as Seed
+  }
+  node "Trình duyệt web" as Browser <<execution environment>> {
+    artifact "SPA đang thực thi" as SPA
+    database "localStorage\nehub_state" as Storage
+    component "Mock VNU-SSO" as Auth
+    component "Mock điều khiển và telemetry" as IoT
+  }
+}
+
+Student --> SPA : thao tác UI
+Operator --> SPA : thao tác UI
+Browser --> Server : HTTP GET
+SPA ..> Storage : Web Storage API
+SPA ..> Auth : lời gọi nội bộ
+SPA ..> IoT : lời gọi nội bộ
+@enduml

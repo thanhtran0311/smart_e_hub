@@ -1,1 +1,0 @@
-// TelemetryEvent - goi tin cam bien IoT (UC14). TODO: kiem tra checksum / timestamp / timeout

@@ -1,1 +1,0 @@
-// charging-schedule - controller cho charging-schedule.html: export { id, layout, mount, unmount }. TODO

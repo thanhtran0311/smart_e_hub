@@ -1,1 +1,4 @@
-[]
+[
+  {"vehicleId":"PV-02","hubId":"H-01","userId":"U-03","start":"@now-12m","end":"@now+45m","version":1,"updatedAt":"@now","id":"RES-P01","type":"PARKING","slotId":"P-01-13","deposit":50000,"depositStatus":"RELEASED","status":"CHECKED_IN"},
+  {"vehicleId":"PV-03","hubId":"H-01","userId":"U-04","start":"@now+75m","end":"@now+120m","version":1,"updatedAt":"@now","id":"RES-P02","type":"PARKING","slotId":"P-01-13","deposit":50000,"depositStatus":"HELD","status":"CONFIRMED","expiresAt":"@now+90m"}
+]

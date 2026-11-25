@@ -1,1 +1,3 @@
-[]
+[
+  {"vehicleId":"PV-02","hubId":"H-01","userId":"U-03","start":"@now-12m","end":null,"version":1,"updatedAt":"@now","id":"CSS-01","portId":"CHG-01-01","scheduleId":"SCH-01","status":"CHARGING","powerKw":7,"energyKwh":1.4}
+]

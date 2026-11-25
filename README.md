@@ -1,91 +1,106 @@
-# Smart E-Hub
+# Smart E-Mobility Hub
 
-Bộ khung thư mục cho MVP Smart E-Mobility Hub của nhóm 5vang3sao.
-Dựa trên đề bài, Submission 1, Submission 2 và mockup nhóm cung cấp.
+Ứng dụng SPA thuần cho bài tập lớn Công nghệ phần mềm của nhóm 5vang3sao, bao phủ UC01–UC14. HTML, CSS, JavaScript ES modules và dữ liệu mẫu chạy trên máy chủ tĩnh. Toàn bộ tài nguyên giao diện nằm trong dự án.
 
-## Trạng thái hiện tại
+## Chạy trên máy cá nhân
 
-- Chỉ tạo cấu trúc dự án; chưa triển khai chức năng hay giao diện mới.
-- Các file HTML, CSS, JS, sơ đồ và tài liệu thiết kế là file trống để nhóm điền sau.
-- `data/` có 22 file JSON, mỗi file chỉ chứa `[]` (riêng `config.json` là `{}`); schema quy ước ghi ở `docs/data-schema.md`.
-- Mockup và ba PDF trong `docs/references/` là bản sao nguyên vẹn, chỉ đổi tên cho dễ tìm.
-- `index.html` hiện trống nên mở lên sẽ chưa thấy giao diện. Muốn xem mẫu cũ, mở `docs/references/mockup.html`; mẫu này có thể cần Internet cho thư viện/font bên ngoài.
-- Chưa cài thư viện, chưa có lệnh build, chưa có backend hay database.
+Trong thư mục C:\Code\smart_e_hub, chạy một trong hai lệnh sau.
 
-## Cách chạy demo
+```powershell
+python -m http.server 8000 --bind 127.0.0.1
+```
 
-Bản thật sẽ nạp `data/*.json` và các trang trong `src/pages/` bằng JavaScript, nên **không mở trực tiếp qua `file://`** (trình duyệt sẽ chặn `fetch`).
+Hoặc dùng Node.js 22 trở lên.
 
-- Cách 1: chạy `start-demo.bat` (dùng `python -m http.server 8000` rồi mở `http://localhost:8000/`).
-- Cách 2: mở thư mục dự án bằng VS Code và dùng extension **Live Server**.
+```powershell
+node tools/serve.mjs
+```
 
-## Hướng triển khai đề xuất
+Mở http://127.0.0.1:8000. Dùng cùng địa chỉ và cổng cho các lần demo để khôi phục đúng dữ liệu đã lưu. Các URL localhost, 127.0.0.1 và các cổng khác nhau có vùng localStorage riêng. ES modules và JSON được tải qua HTTP, vì vậy hãy mở ứng dụng qua máy chủ tĩnh.
 
-Dùng HTML, CSS và JavaScript thuần để tận dụng mockup hiện có. Cấu trúc này là đề xuất ban đầu, không phải yêu cầu bắt buộc của môn học hay quyết định công nghệ đã được nhóm duyệt.
+Có thể nhấp đúp start-demo.bat. Script ưu tiên máy chủ Node nếu Node đã được cài, sau đó dùng Python. Dừng máy chủ bằng Ctrl+C.
 
-`index.html` là khung trang chính; `src/app.js` khởi tạo ứng dụng và `src/router.js` chuyển màn hình. Các trang trong `src/pages/` dự kiến là phần nội dung được nạp vào khung chính, không phải các ứng dụng riêng. Thành phần lặp lại nằm trong `src/components/`.
+## Tài khoản mô phỏng
 
-Mỗi màn hình và mỗi component gồm **một cặp file**: `.html` là markup fragment (không `<!DOCTYPE>`, không `<script>`, không `<link>`), `.js` là controller export `{ id, layout, mount, unmount }`. Quy ước này ghi chi tiết trong `STRUCTURE.md`. Danh sách Use Case, tên chính thức, trang và hash route ghi trong `docs/uc-catalog.md`.
+| Tài khoản | Vai trò | Xe cá nhân | Mật khẩu |
+| --- | --- | --- | --- |
+| student01 | Sinh viên | PV-01 | 123456 |
+| student02 | Sinh viên | PV-02 | 123456 |
+| operator01 | Vận hành | — | 123456 |
+| dual01 | Sinh viên và Vận hành | PV-03 | 123456 |
 
-`src/services/` dành cho nghiệp vụ và cập nhật trạng thái; `src/models/` dành cho mô hình dữ liệu/lớp nếu nhóm dùng cách tổ chức hướng đối tượng. Tên lớp hiện chỉ là chỗ giữ; chưa xác định thuộc tính, phương thức hay quan hệ UML. Nhóm có thể điều chỉnh theo thiết kế Submit 3.
+Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài khoản thấy các màn hình tương ứng với quyền của mình. Router và bộ xử lý use case kiểm tra quyền từ phiên đã đăng nhập.
 
-`src/storage/app-state.js` giữ trạng thái dùng chung giữa các màn hình; `src/storage/event-bus.js` phát sự kiện để màn hình đang mở cập nhật lại. Các service dùng cùng trạng thái để tránh mỗi màn hình giữ một bản dữ liệu riêng.
+## Dữ liệu và điều khiển demo
 
-## JSON và lưu thay đổi trong bản demo
+- 5 Hub, 26 xe dùng chung, xe cá nhân, ô đỗ, cổng và lịch sạc có sẵn trong data/*.json. Các Hub có mã H-01 đến H-05 tương ứng Metro, KTX A, Thư viện, Bách khoa và KTX B.
+- H-01 có xe E-102 phù hợp để bắt đầu demo. H-02 có nhiều ô dùng chung để nhận xe. H-04 gần đầy và H-05 mất kết nối để trình diễn dữ liệu cũ.
+- CHG-01-01 đang có phiên sạc của student02 (PV-02) và lịch tương lai của dual01 (PV-03). CHG-01-02 trống để student01 thử sạc ngay.
+- Nút Điều khiển demo ở cuối sidebar tăng thời gian thêm 1, 2, 15 hoặc 60 phút. Dùng chức năng này để thử hết hạn giữ xe, check-in và thay đổi chỉ số năng lượng. Nhánh khôi phục dữ liệu có hộp xác nhận.
+- Mỗi 15 giây, nguồn telemetry giả lập gửi heartbeat cho các Hub trực tuyến, xử lý thời hạn và cập nhật UI. Hub đã bị ngắt kết nối thủ công giữ nguyên dữ liệu cũ đến khi phát gói hợp lệ.
+- Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Tải lại trang vẫn giữ đơn, chuyến, lịch, cọc và đồng hồ. JSON ban đầu được giữ làm dữ liệu khởi tạo.
 
-- `data/*.json`: dữ liệu ban đầu để nạp khi khởi tạo hoặc đặt lại demo.
-- `src/storage/json-loader.js`: chỗ dành cho việc đọc các file JSON sau này.
-- `src/storage/local-storage.js`: chỗ dành cho lưu/khôi phục trạng thái bằng localStorage sau này.
-- Trình duyệt không tự ghi ngược thay đổi vào file JSON của dự án. localStorage chỉ giữ dữ liệu trong trình duyệt đang dùng, không đồng bộ nhiều máy/người dùng.
-- Khi viết code, nên có thao tác đặt lại demo để xóa trạng thái đã lưu và nạp lại JSON gốc.
-- Đây là phương án demo trên một trình duyệt. Nếu nhóm cần nhiều người thao tác đồng thời trên dữ liệu chung, cần xem lại lớp lưu trữ và bổ sung backend; cấu trúc hiện tại chưa giải quyết yêu cầu đó.
-- Các tài khoản, ví và thanh toán trong demo chỉ là dữ liệu giả; không tích hợp thanh toán thật. Đăng nhập là **giả lập SSO**, không phải xác thực thật.
+## Kiến trúc đang thực thi
 
-## Vai trò các thư mục
-
-| Thư mục | Mục đích |
-| --- | --- |
-| `src/pages/` | Nội dung màn hình Sinh viên và Vận hành theo mockup (mỗi trang là cặp `.html` + `.js`) |
-| `src/components/` | Header, sidebar, hộp đăng nhập, thông báo và bản đồ sơ đồ dùng chung (mỗi component là cặp `.html` + `.js`) |
-| `src/styles/` | `base.css` (font, reset, scrollbar), `layout.css` (khung trang), `components.css` (thành phần và màu trạng thái) |
-| `src/services/` | Xử lý nghiệp vụ, tách khỏi HTML |
-| `src/models/` | Các lớp/mô hình dữ liệu dự kiến |
-| `src/storage/` | Đọc JSON, trạng thái chung, event bus và lưu trình duyệt |
-| `src/utils/` | Hàm hỗ trợ kiểm tra dữ liệu, thời gian, định dạng và sinh mã |
-| `data/` | Dữ liệu JSON ban đầu, chưa có dữ liệu thực |
-| `assets/fonts/` | Font Inter bản offline (thay Google Fonts) |
-| `assets/images/` | Logo, favicon |
-| `assets/vendor/` | `tailwind.js`, `lucide.js` bản offline (thay CDN, để demo không cần Internet) |
-| `docs/references/` | Đề bài, hai bản submit và mockup gốc |
-| `docs/submission-3/` | Deployment view, Development view, sơ đồ lớp và mô tả mọi phương thức |
-| `docs/final/` | Kịch bản demo, báo cáo cuối kỳ nguồn Markdown, ảnh màn hình và slide |
-| `docs/team/` | Phân công, biên bản họp và đánh giá chéo cuối kỳ |
-| `tests/manual/` | Test case, gồm luồng chính, thay thế và lỗi |
-| `tests/unit/` | Chỗ dành cho test nghiệp vụ khi bắt đầu triển khai |
-
-Các file `.gitkeep` chỉ giữ thư mục rỗng khi đưa lên Git. Xem `STRUCTURE.md` để tra toàn bộ cây thư mục, `docs/data-schema.md` cho schema JSON và `docs/uc-catalog.md` cho bảng Use Case.
-
-## Đối chiếu chức năng
-
-| Use case | Màn hình trong `src/pages/` | Service dự kiến chính |
+| Tầng | Tệp chính | Trách nhiệm |
 | --- | --- | --- |
-| UC01 Tra cứu Hub và tài nguyên | `student/hub-search.html` | `hub-service.js` |
-| UC02 Đặt xe | `student/hub-search.html` | `reservation-service.js`, `wallet-service.js` |
-| UC03 Nhận xe, UC04 Trả xe | `student/pickup-return.html` | `trip-service.js`, `incident-service.js` |
-| UC05 Đặt chỗ đỗ | `student/parking-charging.html` | `parking-service.js`, `reservation-service.js`, `wallet-service.js` |
-| UC06 Đặt lịch sạc, UC07 Phiên sạc | `student/parking-charging.html` | `charging-service.js`, `wallet-service.js` |
-| UC08 Giám sát mạng lưới | `operator/network-dashboard.html` | `monitoring-service.js`, `hub-service.js` |
-| UC09 Điều phối xe | `operator/vehicle-dispatch.html` | `dispatch-service.js` |
-| UC10 Lịch sạc thông minh | `operator/charging-schedule.html` | `charging-scheduler-service.js`, `charging-service.js` |
-| UC11 Xử lý sự cố | `operator/incidents.html` | `incident-service.js`, `notification-service.js` |
-| UC12 Mô phỏng What-if | `operator/what-if.html` | `simulation-service.js` |
-| UC13 Áp dụng khuyến nghị | `operator/what-if.html` | `recommendation-service.js`, `dispatch-service.js`, `charging-scheduler-service.js` |
-| UC14 Telemetry giả lập | `operator/telemetry.html` | `telemetry-service.js` |
+| Presentation | src/app.js, src/router.js, src/pages/, src/components/ | Shell, hash route, form, bản đồ, nhãn trạng thái và thông báo |
+| Application | src/application/ | Handler Sinh viên và Operator, sạc, mô phỏng, telemetry và xử lý sau commit |
+| Domain | src/domain/, src/utils/status.js | Điều kiện cấp phát, khung giờ, version, sức chứa, sự cố và thông báo |
+| Infrastructure | src/infrastructure/store.js, device.js | JSON seed, lưu/khôi phục, giao dịch cục bộ, AuthService và DeviceControlGateway mô phỏng |
 
-`auth-service.js` dự kiến phục vụ đăng nhập demo/chọn vai trò. `notification-service.js` dự kiến dùng chung cho thông báo, gồm gợi ý điều hướng. `audit-log-service.js` ghi nhật ký thao tác theo yêu cầu phi chức năng về khả năng quan sát hệ thống. Không xem việc chọn vai trò trong trình duyệt là cơ chế phân quyền an toàn cho hệ thống thực tế.
+OperationalStore sao chép trạng thái thành draft, chạy validation và mọi thay đổi đồng bộ, ghi snapshot rồi mới công bố trạng thái mới. Nếu validation hoặc lưu trữ thất bại, trạng thái đã commit trước đó được giữ lại. Lệnh thiết bị được xác nhận qua các bước riêng để biểu diễn được timeout và bằng chứng vật lý trước khi hoàn tất nghiệp vụ.
 
-## Lưu ý cho báo cáo
+AuthService, OperationalStore và DeviceControlGateway giữ tên trong thiết kế. Các controller được hiện thực bằng router và event handler. Các thực thể dùng object JSON cùng quy tắc Domain, tham chiếu bằng ID. Lệnh điều phối và kế hoạch sạc lưu hàng đợi trước khi xử lý phản hồi mô phỏng sau commit.
 
-Các sơ đồ `.puml` là chỗ giữ cho nguồn PlantUML; nhóm có thể dùng công cụ UML khác và xuất hình vào `docs/submission-3/diagrams/exported/`. Tài liệu Markdown là bản nháp làm việc; bài nộp vẫn cần đúng định dạng mà đề/LMS yêu cầu.
+Xem [PDF Submit 3](docs/references/submission-3.pdf), [Deployment View](docs/submission-3/deployment-view.md), [Implementation View](docs/submission-3/development-view.md) và [44 lớp cùng 184 phương thức](docs/submission-3/class-and-method-descriptions.md).
 
-Bài nộp cuối kỳ là 01 file PDF, nội dung bắt buộc liệt kê trong `docs/final/final-report.md`. Hãy hoàn thiện thiết kế lớp và phương thức dựa trên nghiệp vụ đã thống nhất, không coi tên file hiện tại là thiết kế hoàn chỉnh. Khi dùng AI để phát triển tiếp, cập nhật khai báo trong `docs/ai-usage.md`.
+## Đối chiếu use case và cách kiểm tra
+
+| UC | Route sau dấu # | Module | Dấu hiệu hoàn tất |
+| --- | --- | --- | --- |
+| 01 | /student/hub-search | student.searchHubs, hub-search.js | Tìm theo tên, khu vực hoặc bán kính từ mốc demo, lọc loại xe và pin |
+| 02 | /student/hub-search | student.bookVehicle | Xe được giữ 15 phút, đơn xuất hiện ở hành trình |
+| 03 | /student/pickup-return | student.beginPickup → leaveSlot | Ô nguồn chỉ trống sau xác nhận cảm biến rời ô |
+| 04 | /student/pickup-return | student.requestReturn → finishReturn | Chuyến hoàn tất, xe và ô đích nhất quán |
+| 05 | /student/parking-charging | student.bookParking → leaveParking | Giữ cọc cùng đơn, slot đổi theo cảm biến |
+| 06 | /student/parking-charging | student.bookCharging | Giữ lịch theo khung giờ, kiểm tra trùng và công suất |
+| 07 | /student/parking-charging | student.plugCharger → unplugCharger | Ngắt điện rồi rút đầu cắm mới mở cổng |
+| 08 | /operator/network-dashboard | networkSnapshot, operator views | Tải, công suất, kết nối và thời điểm cập nhật, xuất JSON hoặc CSV |
+| 09 | /operator/vehicle-dispatch | operator dispatch | Giữ sức chứa đích và bàn giao theo từng xe |
+| 10 | /operator/charging-schedule | proposeSchedule, schedule.apply, processPendingEffects | Lưu kế hoạch và lệnh, ghi phản hồi từng cổng đủ điều kiện |
+| 11 | /operator/incidents | recordIncident, operator incident | Ngắt an toàn, cách ly, gửi lại phiếu cùng mã và xử lý đơn bị ảnh hưởng |
+| 12 | /operator/what-if | simulation.run, simulation.template | Lưu và chạy lại mẫu, dự báo thiếu xe, đầy ô và quá tải sạc |
+| 13 | /operator/what-if | recommendation apply/batch/compensate | Kiểm tra lại live state, áp dụng theo lựa chọn và audit |
+| 14 | /operator/telemetry | telemetry.emit, checkSensorTimeouts | Gói Hub, xe, ô và cổng, cảnh báo lỗi và timeout từng thiết bị |
+
+Kịch bản xuyên suốt nằm trong [docs/final/demo-script.md](docs/final/demo-script.md). Danh sách kiểm tra thủ công nằm trong [tests/manual/test-cases.md](tests/manual/test-cases.md).
+
+## Chạy kiểm thử
+
+Kiểm thử nghiệp vụ chỉ cần Node.js 22 trở lên và thư viện chuẩn.
+
+```powershell
+node --test tests/*.test.mjs
+```
+
+Các ca kiểm thử bao gồm tranh cùng tài nguyên, check-in sát hạn, lỗi ghi giữa giao dịch, đổi chốt trả, một xe chiếm ô, điều phối 4/5 xe, ô đích bị cách ly, lệnh sạc sau commit, phiên sạc lỗi, phiếu bảo trì gửi lại, dữ liệu mô phỏng cũ và telemetry cảm biến.
+
+Kiểm thử trình duyệt là công cụ phát triển tùy chọn. Nó dùng Playwright và Edge đã cài trên máy. Khi Playwright được cài riêng, đặt PLAYWRIGHT_MODULE thành đường dẫn thư mục package. Với máy chủ đang chạy, thực hiện như sau.
+
+```powershell
+$env:PLAYWRIGHT_MODULE='C:/duong-dan-toi/playwright'
+$env:DEMO_URL='http://127.0.0.1:8000'
+node tests/browser-smoke.mjs
+```
+
+Đặt DEMO_SCREENSHOT thành đường dẫn PNG nếu cần chụp màn bản đồ. Mỗi lần kiểm thử dùng browser context riêng, có seed riêng. Kết quả lần chạy bàn giao được ghi trong docs/final/verification.md.
+
+## Các giả định và giới hạn MVP
+
+- Phạm vi triển khai theo bản nộp 3, mục 2.3. Xác thực, telemetry, relay, khóa xe, đội vận chuyển và bảo trì đều được mô phỏng phía client. Phân quyền trong UI phục vụ minh họa thiết kế. Dữ liệu tài khoản mẫu nằm trong tệp tĩnh.
+- Giao dịch và version bảo vệ chuỗi thao tác trong một phiên. localStorage không cung cấp giao dịch đa người dùng hoặc đồng bộ nhiều tab/trình duyệt. Khi đổi vai trò để demo dữ liệu chung, đăng xuất và đăng nhập trong cùng tab.
+- Kịch bản đỗ xe giữ cọc 50.000 đồng. No-show quá thời gian ân hạn khấu trừ cọc một lần. Hệ thống nhả khoản giữ khi hủy hợp lệ hoặc check-in. Các giá trị nằm trong config.json.
+- What-if dự báo theo bước 15 phút trên bản chụp mạng lưới. Lượt lấy xe, tỷ lệ xe đến và nhu cầu sạc là giả định demo. Kết quả hiển thị cả độ mới của dữ liệu đầu vào.
+- Phiên sạc ước tính kWh từ công suất và thời gian mô phỏng, chi phí từ cấu hình. Kết quả cần được trình bày là số liệu demo khi bảo vệ.
+- Bản đồ và tọa độ tìm bán kính là dữ liệu mô phỏng khu đô thị. Phông Inter được đóng gói để chạy ngoại tuyến.

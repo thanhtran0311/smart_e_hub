@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" preserveAspectRatio="none">
+  <!-- Green campus zones -->
+  <circle cx="380" cy="310" r="145" fill="#dcfce7" opacity="0.65" />
+  <ellipse cx="620" cy="240" rx="120" ry="90" fill="#dbeafe" opacity="0.6" />
+  <ellipse cx="210" cy="210" rx="140" ry="70" fill="#dbeafe" opacity="0.5" />
+  <!-- Inter-campus main roads -->
+  <path d="M 80 220 L 380 310 L 620 230" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <path d="M 380 310 L 250 480" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <path d="M 380 310 L 560 460" stroke="#cbd5e1" stroke-width="18" fill="none" stroke-linecap="round"/>
+  <path d="M 80 220 L 380 310 L 620 230" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+  <path d="M 380 310 L 250 480" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+  <path d="M 380 310 L 560 460" stroke="#ffffff" stroke-width="6" fill="none" stroke-dasharray="10 8"/>
+</svg>

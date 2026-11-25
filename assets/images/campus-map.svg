@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" preserveAspectRatio="none">
+<title>Sơ đồ khu đô thị Đại học Quốc gia Thành phố Hồ Chí Minh</title>
+<defs>
+  <pattern id="paper" width="42" height="42" patternUnits="userSpaceOnUse"><path d="M0 42 42 0" stroke="#cddccf" opacity=".18"/></pattern>
+  <pattern id="trees" width="28" height="22" patternUnits="userSpaceOnUse"><circle cx="8" cy="8" r="2.7" fill="#a9cba7"/><circle cx="21" cy="17" r="2" fill="#b4d1b1"/></pattern>
+  <g id="east"><path d="M-20 408C120 433 174 463 264 420S435 313 587 316 740 347 1020 264"/>
+  <path d="M-20 189C143 192 229 235 368 207S575 153 702 149 905 198 1030 133"/>
+  <path d="M0 553C166 523 287 534 399 471S614 409 756 435 925 472 1020 425"/></g>
+  <g id="north"><path d="M89-10C161 99 158 192 187 284S274 470 259 610"/>
+  <path d="M407-15C451 78 487 144 488 201S460 289 510 374 572 530 584 610"/>
+  <path d="M775-10C796 63 828 110 813 170S739 251 742 321 796 449 851 607"/></g>
+  <g id="minor"><path d="M-5 71 119 118 233 102 357 129 454 105 581 64M-9 286 159 316 264 286 350 292 478 241M400 615 376 518 345 417 316 344 285 241 250 174 206 97 209-10M620-10 613 116 661 172 656 235 602 286 623 357 680 416 715 497 723 613M920-10 911 98 927 181 892 246 914 302 871 373 907 441 934 614M108 600 95 488 107 410 79 326 88 241 53 168M384 388 466 367 573 368 661 351M296 571 386 557 495 553 568 512 686 527 781 495 867 535 1014 505M540 224 623 209 707 214 778 192M8 352 108 365 218 340 280 350"/></g>
+</defs>
+<rect width="1000" height="600" fill="#e8ede5"/>
+<rect width="1000" height="600" fill="url(#paper)"/>
+<path d="M0 0H205L164 71 79 100 0 78ZM318 0H428L478 87 425 125 344 114 298 69ZM624 0H767L743 89 701 103 647 71ZM831 247 908 216 968 269 944 331 858 348 800 298ZM384 433 434 407 479 460 458 512 384 527 357 477ZM36 429 111 431 155 496 97 534 0 507Z" fill="#cfdfc9"/>
+<path d="M0 0H205L164 71 79 100 0 78ZM318 0H428L478 87 425 125 344 114 298 69ZM624 0H767L743 89 701 103 647 71ZM831 247 908 216 968 269 944 331 858 348 800 298ZM384 433 434 407 479 460 458 512 384 527 357 477ZM36 429 111 431 155 496 97 534 0 507Z" fill="url(#trees)"/>
+<path d="M11 91C55 85 77 113 99 126S132 162 111 177 36 169 14 156 -22 127 11 91Z" fill="#c0dbde" stroke="#a9cfd1" stroke-width="3"/>
+<path d="M533 65C558 48 578 61 604 45S646 24 655 42 633 82 636 103 607 147 577 143 550 120 534 113 515 83 533 65Z" fill="#bad9db" stroke="#a7cbd0" stroke-width="3"/>
+<g fill="#d2d9d3" stroke="#c5cec7" stroke-width="1.5">
+<g transform="translate(210 45) rotate(14)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(276 125) rotate(-8)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(377 164) rotate(-11)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(516 157) rotate(-17)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(687 107) rotate(6)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(835 75) rotate(-8)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(865 166) rotate(-7)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(665 258) rotate(-9)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(566 255) rotate(11)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(398 254) rotate(-15)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(321 319) rotate(-17)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(205 256) rotate(-12)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(116 237) rotate(19)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(49 390) rotate(12)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(182 389) rotate(12)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(331 477) rotate(-14)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(512 444) rotate(-13)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(647 470) rotate(9)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(781 383) rotate(-13)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(898 390) rotate(-6)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(958 182) rotate(-9)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(205 523) rotate(-8)"><rect x="-15" y="-13" width="56" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(808 519) rotate(11)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+<g transform="translate(45 553) rotate(-5)"><rect x="-15" y="-13" width="44" height="12" rx="2"/><rect x="-17" y="8" width="21" height="13" rx="2"/><rect x="13" y="9" width="24" height="16" rx="2"/></g>
+</g>
+<g fill="none" stroke="#d1d5ca" stroke-linejoin="round" stroke-linecap="round"><use href="#minor" stroke-width="10"/><use href="#east" stroke-width="20"/><use href="#north" stroke-width="17"/></g>
+<g fill="none" stroke-linejoin="round" stroke-linecap="round"><use href="#minor" stroke="#faf9f0" stroke-width="7"/><use href="#east" stroke="#fffdf3" stroke-width="15"/><use href="#north" stroke="#fffdf3" stroke-width="12"/></g>
+<path d="M-10 488Q165 492 274 432T462 352" stroke="#a5b8b4" stroke-width="5" fill="none"/><path d="M-10 488Q165 492 274 432T462 352" stroke="#f3f7f3" stroke-dasharray="6 5" stroke-width="2" fill="none"/>
+<g font-family="Segoe UI,Arial,sans-serif" pointer-events="none" text-anchor="middle">
+<g font-size="13" fill="#708279" font-weight="600" letter-spacing="2">
+<text x="384" y="82" transform="rotate(-8 384 82)">LINH TRUNG</text><text x="680" y="564">ĐÔNG HÒA</text>
+</g><g font-size="11" fill="#83918b">
+<text x="583" y="99" fill="#648c95" font-style="italic">Hồ Đá</text><text x="373" y="204" transform="rotate(-10 373 204)">Tạ Quang Bửu</text><text x="645" y="314" transform="rotate(4 645 314)">Đường Nguyễn Du</text><text x="285" y="453" transform="rotate(-24 285 453)">Tuyến Metro số 1</text><text x="498" y="556" transform="rotate(-5 498 556)">Quốc lộ 1K</text>
+</g></g>
+</svg>

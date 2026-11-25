@@ -1,0 +1,48 @@
+@startuml submit3-implementation
+title Smart E-Mobility Hub - Implementation View
+
+package Presentation {
+  [SPA shell và router] as Shell
+  [Sinh viên UC01–UC07] as Student
+  [Operator UC08–UC14] as Operator
+}
+package Application {
+  [Tra cứu, đặt, nhận/trả xe] as Booking
+  [Đỗ và sạc] as Charging
+  [Điều phối, sự cố, mô phỏng] as Operations
+  [Telemetry và tác vụ sau commit] as Effects
+}
+package Domain {
+  [Quy tắc và trạng thái] as Rules
+  [Mô hình dữ liệu nghiệp vụ] as Model
+}
+package Infrastructure {
+  [OperationalStore] as Store
+  [Mock VNU-SSO] as Auth
+  [DeviceControlGateway và heartbeat] as Devices
+  [JSON seed] as Seed
+  [Adapter localStorage] as Storage
+}
+
+Shell --> Student
+Shell --> Operator
+Student --> Booking
+Student --> Charging
+Operator --> Operations
+Operator --> Effects
+Booking --> Rules
+Charging --> Rules
+Operations --> Rules
+Effects --> Rules
+Rules --> Model
+Shell ..> Auth : phiên demo
+Shell ..> Store : nạp và commit
+Booking ..> Store : đọc và ghi draft
+Operations ..> Store : đọc và ghi draft
+Effects ..> Store : đọc lệnh đã commit
+Charging ..> Devices
+Effects ..> Devices
+Store --> Seed
+Store --> Storage
+Store ..> Model : tạo snapshot dữ liệu
+@enduml

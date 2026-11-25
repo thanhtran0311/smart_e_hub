@@ -1,1 +1,0 @@
-// incidents - controller cho incidents.html: export { id, layout, mount, unmount }. TODO

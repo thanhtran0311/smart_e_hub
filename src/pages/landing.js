@@ -1,1 +1,0 @@
-// landing - controller cho landing.html: export { id, layout, mount, unmount }. TODO

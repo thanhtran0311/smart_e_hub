@@ -1,1 +1,41 @@
-{}
+{
+  "meta": {
+    "source": "Bảng 3 - Tham số cấu hình nghiệp vụ (báo cáo Submit 2, bản v2)",
+    "note": "Giá trị là giả định của nhóm dùng cho bản demo, không phải quy tắc cố định của hệ thống. Mọi ngưỡng phải đọc từ đây, không gõ cứng trong code.",
+    "schemaVersion": 2
+  },
+  "params": {
+    "T_HOLD_MIN": 15,
+    "PARKING_DEPOSIT_VND": 50000,
+    "CHARGING_RATE_VND_KWH": 3000,
+    "MIN_SOC_BOOK_PCT": 30,
+    "T_CONFIRM_MIN": 2,
+    "T_GRACE_MIN": 15,
+    "MIN_SOC_RELOCATE_PCT": 40,
+    "DEFAULT_SOC_FILTER_PCT": 70,
+    "HUB_FULL_RATIO": 0.9,
+    "HUB_LOW_AVAIL_RATIO": 0.1,
+    "LOW_SOC_ALERT_PCT": 30,
+    "TELEMETRY_TIMEOUT_SEC": 60,
+    "CONTROL_TIMEOUT_SEC": 10,
+    "REDIRECT_NOTIFICATION_INTERVAL_SEC": 60
+  },
+  "hubPowerLimitKw": {
+    "H-01": 40,
+    "H-02": 30,
+    "H-03": 25,
+    "H-04": 35,
+    "H-05": 25
+  },
+  "priorityWeights": {
+    "soc": 0.5,
+    "nextTrip": 0.3,
+    "sharedVehicle": 0.2
+  },
+  "simulation": {
+    "maxDurationMin": 480,
+    "defaultDemandPct": 200,
+    "arrivalsPerPickup": 0.5,
+    "arrivingChargeRatio": 0.25
+  }
+}

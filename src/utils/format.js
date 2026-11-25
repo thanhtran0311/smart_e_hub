@@ -1,1 +1,0 @@
-// format - dinh dang VND, %, kWh, khoang thoi gian hien thi. TODO

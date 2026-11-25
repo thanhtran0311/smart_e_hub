@@ -1,1 +1,0 @@
-// PrivateVehicle - xe dien ca nhan cua sinh vien (UC05-UC07). TODO: bien so, chuan sac, muc pin

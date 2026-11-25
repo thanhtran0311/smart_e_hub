@@ -1,1 +1,5 @@
-[]
+[
+  {"id":"PV-01","name":"VinFast Evo200","userId":"U-01","ownerId":"U-01","connector":"TYPE_2","soc":46,"version":1,"updatedAt":"@now"},
+  {"id":"PV-02","name":"Xe máy điện Klara","userId":"U-03","ownerId":"U-03","connector":"TYPE_2","soc":46,"version":1,"updatedAt":"@now"},
+  {"id":"PV-03","name":"Xe máy điện Feliz","userId":"U-04","ownerId":"U-04","connector":"TYPE_2","soc":46,"version":1,"updatedAt":"@now"}
+]

@@ -1,1 +1,0 @@
-// User - nguoi dung he thong (STUDENT / OPERATOR), lien ket walletId. TODO: thuoc tinh + phuong thuc theo docs/data-schema.md

@@ -1,1 +1,0 @@
-// login-modal - controller cho login-modal.html: render du lieu tu app-state va gan su kien. TODO

@@ -1,1 +1,6 @@
-[]
+[
+  {"id":"U-01","username":"student01","name":"Minh Anh","roles":["student"],"balance":300000,"held":0,"password":"123456","version":1,"updatedAt":"@now"},
+  {"id":"U-02","username":"operator01","name":"Quang Huy","roles":["operator"],"balance":0,"held":0,"password":"123456","version":1,"updatedAt":"@now"},
+  {"id":"U-03","username":"student02","name":"Gia Linh","roles":["student"],"balance":270000,"held":0,"password":"123456","version":1,"updatedAt":"@now"},
+  {"id":"U-04","username":"dual01","name":"Thanh Mai","roles":["student","operator"],"balance":380000,"held":50000,"password":"123456","version":1,"updatedAt":"@now"}
+]

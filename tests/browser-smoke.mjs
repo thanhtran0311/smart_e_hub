@@ -1,0 +1,281 @@
+// Optional UI checks. Install Playwright separately or point PLAYWRIGHT_MODULE at its directory.
+import { createRequire } from "node:module";
+import assert from "node:assert/strict";
+const { chromium } = createRequire(import.meta.url)(
+  process.env.PLAYWRIGHT_MODULE || "playwright",
+);
+const browser = await chromium.launch({
+  channel: process.env.BROWSER_CHANNEL || "msedge",
+  headless: true,
+});
+try {
+  const page = await browser.newPage({
+    viewport: { width: 1365, height: 920 },
+  });
+  page.setDefaultTimeout(6000);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400)
+      errors.push(response.status() + " " + response.url());
+  });
+  const base = process.env.DEMO_URL || "http://127.0.0.1:8000";
+  const state = () =>
+    page.evaluate(() => JSON.parse(localStorage.getItem("ehub_state")));
+  const btn = (action) =>
+    page.locator('[data-command="' + action + '"]').first();
+  const panel = (action) =>
+    page.locator('form[data-action="' + action + '"]').first();
+  const send = (action) => panel(action).locator("button[type=submit]").first().click();
+  const studentEntry = page.getByRole("link", { name: "Mở WebApp – Phân hệ Sinh viên" });
+  const studentLogin = page.getByRole("dialog", { name: "Phân hệ Sinh viên" });
+  const link = async (key) => {
+    const target = page.locator('a[href="#/' + key + '"]').last();
+    if (!(await target.isVisible())) await page.locator("[data-menu]").click();
+    await target.click();
+    await page.waitForURL("**/#/" + key);
+    await page.waitForFunction(
+      (route) =>
+        document
+          .querySelector('a[aria-current="page"]')
+          ?.getAttribute("href") ===
+        "#/" + route,
+      key,
+    );
+  };
+  async function submitLogin(name) {
+    await page.locator("dialog [name=username]").fill(name);
+    await send("authenticate");
+  }
+  async function authenticate(name) {
+    await submitLogin(name);
+    await page.waitForSelector("dialog", { state: "hidden" });
+  }
+  async function assertWrongRole(name) {
+    await submitLogin(name);
+    await page.getByText("Tài khoản chưa có quyền thực hiện thao tác này.").waitFor();
+    assert.equal((await state()).userId, null);
+    assert.equal(await page.locator(".shell").count(), 0);
+  }
+  async function assertLandingOnly() {
+    await page.locator(".landing").waitFor();
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    assert.equal(await page.locator(".shell, #sidebar, #query, .map-pin").count(), 0);
+  }
+  const sidebarLabels = () =>
+    page.locator("#sidebar .nav-link > span:first-of-type").allTextContents();
+  const roleSwitcherLabels = page.locator(".topbar")
+    .getByText(/^(Student View|Operator View)$/);
+  const studentAccount = page.getByRole("button", {
+    name: "Tài khoản Trần Tiến Thành",
+  });
+  async function assertStudentProfile() {
+    await studentAccount.getByText("Trần Tiến Thành", { exact: true }).waitFor();
+    await studentAccount.getByText("MSSV: 2413181", { exact: true }).waitFor();
+    assert.equal(await roleSwitcherLabels.count(), 0);
+  }
+
+  await page.goto(base);
+  await assertLandingOnly();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await assertLandingOnly();
+  await page.goto(base + "/#/student/hub-search");
+  await studentLogin.waitFor();
+  await assertLandingOnly();
+  await page.getByRole("button", { name: "Hủy", exact: true }).click();
+  await page.waitForURL("**/#/");
+  await assertLandingOnly();
+  await studentEntry.click();
+  await authenticate("student01");
+  await assertStudentProfile();
+  await page.setViewportSize({ width: 1365, height: 920 });
+  await page.getByRole("heading", { name: "Bản đồ mạng lưới Hub" }).waitFor();
+  await assertStudentProfile();
+  assert.deepEqual(await sidebarLabels(), [
+    "Tra cứu & Đặt xe",
+    "Nhận & Trả xe",
+    "Đỗ & Sạc xe cá nhân",
+  ]);
+  await page.getByRole("link", { name: "Quay về trang giới thiệu" }).click();
+  await assertLandingOnly();
+  assert.equal((await state()).userId, null);
+  await page.goBack();
+  await studentLogin.waitFor();
+  await assertLandingOnly();
+  await page.goForward();
+  await studentLogin.waitFor({ state: "hidden" });
+  await studentEntry.click();
+  await studentLogin.waitFor();
+  await assertWrongRole("operator01");
+  await authenticate("student01");
+  await page.getByRole("heading", { name: "Bản đồ mạng lưới Hub" }).waitFor();
+  assert.equal(await page.locator(".map-pin").count(), 5);
+  if (process.env.DEMO_SCREENSHOT)
+    await page.screenshot({ path: process.env.DEMO_SCREENSHOT });
+  await page.locator("#query").fill("Metro");
+  assert.equal(await page.locator(".hub-choice").count(), 1);
+  await page.locator("#query").fill("");
+  await page.getByText("Lọc theo bán kính", { exact: true }).click();
+  await page.locator("select[name=nearbyHub]").selectOption("H-01");
+  await page.locator("select[name=nearbyRadius]").selectOption("0.5");
+  assert.equal(await page.locator(".hub-choice").count(), 1);
+  await page.locator("select[name=nearbyHub]").selectOption("");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .locator('button[data-command="bookVehicle"][data-payload*="E-102"]')
+    .click();
+  await panel("beginPickup").locator("[name=code]").fill("E-102");
+  await send("beginPickup");
+  await send("unlockAck");
+  await btn("confirmPickup").click();
+  await btn("leaveSlot").click();
+  await page.reload();
+  await assertStudentProfile();
+  await panel("requestReturn").locator("[name=hubId]").selectOption("H-02");
+  await send("requestReturn");
+  await send("lockReturn");
+  await send("finishReturn");
+  assert.equal((await state()).trips.at(-1).status, "COMPLETED");
+  console.log("PASS · tra cứu, đặt, mở khóa, rời ô, tải lại, trả xe");
+  await link("student/parking-charging");
+  const parking = panel("bookParking");
+  const slot = (await state()).slots.find(
+    (x) =>
+      x.type === "PRIVATE" && x.hubId === "H-01" && x.status === "AVAILABLE",
+  );
+  await parking.locator("[name=slotId]").selectOption(slot.id);
+  await send("bookParking");
+  await btn("checkInParking").click();
+  await page.locator("details summary").first().click();
+  await panel("bookCharging")
+    .locator("[name=portId]")
+    .selectOption("CHG-01-02");
+  await send("bookCharging");
+  const schedule = (await state()).schedules.at(-1);
+  await panel("plugCharger").locator("[name=code]").fill(schedule.code);
+  await send("plugCharger");
+  await send("startCharging");
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector(
+        "[data-session-reading]",
+      )?.textContent;
+      return text && !text.startsWith("0 kWh");
+    },
+    null,
+    { timeout: 22000 },
+  );
+  await send("stopCharging");
+  await btn("unplugCharger").click();
+  await btn("leaveParking").click();
+  assert.equal((await state()).schedules.at(-1).status, "COMPLETED");
+  console.log("PASS · giữ cọc, đỗ xe, đặt lịch, kích hoạt, ngắt và rút sạc");
+  await page.setViewportSize({ width: 1365, height: 920 });
+  await page.goto(base + "/#/operator/network-dashboard");
+  await page.waitForURL("**/#/student/hub-search");
+  await page.locator(".topbar .brand").click();
+  await assertLandingOnly();
+  assert.equal((await state()).userId, null);
+  await page.getByRole("link", { name: "Mở Dashboard – Đơn vị Vận hành" }).click();
+  await page.getByRole("dialog", { name: "Phân hệ Vận hành" }).waitFor();
+  await assertLandingOnly();
+  await assertWrongRole("student01");
+  await authenticate("operator01");
+  await page.getByRole("heading", { name: "Giám sát trạng thái toàn mạng lưới" }).waitFor();
+  assert.equal(await roleSwitcherLabels.count(), 0);
+  assert.deepEqual(await sidebarLabels(), [
+    "Giám sát mạng lưới",
+    "Điều phối luân chuyển",
+    "Lập lịch sạc thông minh",
+    "Xử lý sự cố kỹ thuật",
+    "Mô phỏng What-if",
+    "Đồng bộ cảm biến IoT",
+  ]);
+  console.log("PASS · trang giới thiệu tách khỏi dashboard, đăng nhập theo vai trò và nhãn sidebar");
+  await link("operator/vehicle-dispatch");
+  const boxes = panel("dispatch.create").locator("[name=vehicleIds]");
+  for (let i = 0; i < 5; i++) await boxes.nth(i).check();
+  await send("dispatch.create");
+  await btn("dispatch.start").click();
+  for (let i = 0; i < 4; i++)
+    await page
+      .getByRole("button", { name: "Đã đến", exact: true })
+      .first()
+      .click();
+  await page.getByRole("button", { name: "Chưa bàn giao" }).first().click();
+  assert.equal((await state()).orders.at(-1).status, "PARTIALLY_COMPLETED");
+  console.log("PASS · chặn route sai quyền, điều phối bàn giao 4/5 xe");
+  await link("operator/charging-schedule");
+  await btn("schedule.apply").click();
+  assert.ok((await state()).plans.length);
+  assert.equal((await state()).deviceCommands.find((request) => request.planId).result, "PENDING");
+  await link("operator/telemetry");
+  await send("telemetry.emit");
+  await panel("telemetry.emit")
+    .locator("[name=mode]")
+    .selectOption("duplicate");
+  await send("telemetry.emit");
+  assert.equal((await state()).telemetry.at(-1).result, "IGNORED_DUPLICATE");
+  await panel("telemetry.emit").locator("[name=telemetryDevice]").selectOption("P-01-14");
+  await send("telemetry.emit");
+  assert.equal((await state()).telemetry.at(-1).type, "PARKING_SPACE");
+  assert.equal((await state()).telemetry.at(-1).result, "APPLIED");
+  await link("operator/what-if");
+  await send("simulation.run");
+  assert.ok((await state()).scenarios.length);
+  await page.getByRole("button", { name: "Lưu mẫu kịch bản" }).click();
+  const template = (await state()).scenarios.at(-1);
+  assert.equal(template.status, "DRAFT");
+  await page.getByText("Mẫu kịch bản đã lưu", { exact: true }).click();
+  await page.getByRole("button", { name: "Chạy mẫu" }).first().click();
+  assert.equal((await state()).scenarios.at(-1).templateId, template.id);
+  const redirect = (await state()).recommendations.findLast((item) => item.type === "REDIRECT_USERS");
+  await page.locator('button[data-command="recommendation.apply"][data-payload*="' + redirect.id + '"]').click();
+  assert.ok((await state()).notifications.some((item) => item.userId === "U-01" && item.relatedId === redirect.id));
+  await link("operator/incidents");
+  await panel("incident.open").locator("[name=reason]").fill("Kiểm tra khóa");
+  await send("incident.open");
+  assert.ok((await state()).incidents.length);
+  await link("operator/network-dashboard");
+  await page.locator("select[name=networkFormat]").selectOption("csv");
+  assert.equal(await page.getByRole("link", { name: "Xuất báo cáo" }).getAttribute("download"), "smart-e-hub-network.csv");
+  console.log("PASS · lập lịch sạc, telemetry, what-if, sự cố và dashboard");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+    true,
+  );
+  for (const slug of [
+    "vehicle-dispatch",
+    "charging-schedule",
+    "incidents",
+    "what-if",
+    "telemetry",
+  ]) {
+    await link("operator/" + slug);
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+      slug,
+    );
+  }
+  await btn("account").click();
+  await btn("logout").click();
+  await assertLandingOnly();
+  assert.equal((await state()).userId, null);
+  await studentEntry.click();
+  await authenticate("student01");
+  await btn("inbox").click();
+  await page.getByRole("dialog").getByText("Gợi ý Hub nhận xe", { exact: true }).waitFor();
+  assert.deepEqual(errors, []);
+  console.log(
+    "PASS · điều hướng di động, không tràn ngang, không lỗi JS hoặc HTTP",
+  );
+} finally {
+  await browser.close();
+}

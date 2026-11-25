@@ -1,0 +1,953 @@
+@startuml submit3-31
+title 3.1 Tra cứu Hub, xác thực và giám sát mạng lưới (UC01, UC08)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class User {
+  -userId: String
+  -username: String
+  -fullName: String
+  -email: String
+  -role: UserRole
+  -isVnuAuthenticated: boolean
+  +getUserId(): String
+  +getRole(): UserRole
+  +hasPermission(permission: String): boolean
+}
+
+class Hub {
+  -hubId: String
+  -name: String
+  -locationZone: String
+  -latitude: double
+  -longitude: double
+  -totalSpaces: int
+  -maxPowerLimitKw: double
+  -currentPowerLoadKw: double
+  -isOnline: boolean
+  -lastTelemetryTimestamp: long
+  +reserveInboundSpaces(count: int): void
+  +calculateLoadLevel(fullRatio: double, lowAvailRatio: double): HubLoadLevel
+  +isOffline(telemetryTimeoutSeconds: int, currentTime: long): boolean
+  +getAvailableVehicleCount(): int
+  +getEmptySpaceCount(): int
+  +updateTelemetryHeartbeat(timestamp: long): void
+}
+
+class ParkingSpace {
+  -spaceId: String
+  -hubId: String
+  -status: SpaceStatus
+  -currentVehicleId: String
+  -sensorOccupiedFlag: boolean
+  -lastSensorUpdate: long
+  -version: long
+  +canReleaseToAvailable(): boolean
+  +updateSensorStatus(occupied: boolean, timestamp: long): void
+  +markReserved(): void
+  +markOccupied(): void
+  +markAvailable(): void
+  +markPendingCheck(): void
+  +markFaulted(): void
+}
+
+class AuthService {
+  -activeSessions: Map<String,User>
+  +authenticateVnuSso(ssoToken: String): User
+  +validateSession(token: String): boolean
+  +logout(token: String): void
+}
+
+class HubService {
+  +getNearbyHubs(lat: double, lon: double, radiusKm: double): List<Hub>
+  +getHubDetail(hubId: String): Hub
+  +getHubVehicles(hubId: String, filterCriteria: FilterCriteria): List<Vehicle>
+  +filterHubs(zone: String, minAvailableVehicles: int, minBatteryFilter: double): List<Hub>
+  +updateHubTelemetry(hubId: String, currentPowerKw: double, timestamp: long): boolean
+}
+
+class MonitoringService {
+  -hubService: HubService
+  +getNetworkOverviewSnapshot(): Map<String, Object>
+  +evaluateHubLoadStatus(hubId: String): HubLoadLevel
+  +checkNetworkAnomalies(currentTime: long): List<String>
+  +exportNetworkReport(format: String): byte[]
+  +triggerRebalanceAlertIfNeeded(hubId: String): boolean
+}
+
+class OperationalStore {
+  +getRealtimeNetworkStatus(): NetworkSnapshot
+  +readConfig(key: String, hubId: String): ConfigValue
+  +beginTransaction(): Transaction
+}
+
+enum UserRole {
+  STUDENT
+  OPERATOR
+  TECHNICIAN
+  TRANSPORTER
+}
+
+enum SpaceStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  PENDING_CHECK
+  FAULTED
+}
+
+enum HubLoadLevel {
+  NORMAL_GREEN
+  WARNING_YELLOW
+  CRITICAL_RED
+  OFFLINE_GRAY
+}
+
+Hub "1" *-- "0..*" ParkingSpace
+MonitoringService ..> HubService
+MonitoringService ..> Hub
+MonitoringService ..> OperationalStore
+HubService --> OperationalStore
+HubService ..> Hub
+HubService ..> ParkingSpace
+AuthService ..> User
+@enduml
+
+@startuml submit3-32
+title 3.2 Đặt, nhận và trả xe dùng chung (UC02–UC04)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class OperationalStore <<tham chiếu>>
+
+abstract class Vehicle {
+  -vehicleId: String
+  -batteryLevel: int
+  -lastTelemetryAt: DateTime
+}
+
+class SharedVehicle {
+  -qrCode: String
+  -currentHubId: String
+  -status: VehicleStatus
+  -lockState: String
+  -version: long
+  -activeReservationId: String
+  -activeTripId: String
+  +reserve(reservationId: String): void
+  +markInUse(tripId: String): void
+  +markRelocating(): void
+  +classifyAfterReturn(hasIssue: boolean, latestSoc: OptionalInt): void
+}
+
+class PrivateVehicle {
+  -ownerStudentId: String
+  -licensePlate: String
+  +boolean belongsTo(String studentId)
+}
+
+class Reservation {
+  -reservationId: String
+  -studentId: String
+  -vehicleId: String
+  -pickupHubId: String
+  -reservedAt: DateTime
+  -expiresAt: DateTime
+  -status: String
+  -cancellationReason: String
+  -pickupCredential: String
+  -consumedTripId: String
+  +boolean isActive(DateTime at)
+  +boolean belongsTo(String studentId)
+  +boolean matches(String vehicleId, String pickupHubId)
+  +void confirm()
+  +void cancel(String reason)
+  +void expire()
+  +void consume(String tripId)
+}
+
+class Trip {
+  -tripId: String
+  -studentId: String
+  -vehicleId: String
+  -reservationId: String
+  -startHubId: String
+  -returnHubId: String
+  -returnPositionId: String
+  -startedAt: DateTime
+  -endedAt: DateTime
+  -status: String
+  -issueDescription: String
+  -parkingEvidenceId: String
+  +void start(DateTime at)
+  +void requestEnd(String returnHubId, String returnPositionId, DateTime at)
+  +void attachParkingEvidence(String evidenceId)
+  +void reportIssue(String description)
+  +void markPendingVerification(String reason)
+  +void confirmEnded(DateTime at)
+  +boolean isActive()
+  +long durationMinutes(DateTime at)
+}
+
+class VehicleService {
+  -telemetryGateway: TelemetryGateway
+  +List<SharedVehicle> findAvailableVehicles(String hubId, int minBattery)
+  +SharedVehicle getVehicleSnapshot(String vehicleId)
+  +void validateVehicleAtHub(String vehicleId, String hubId)
+  +void stopChargingSafely(String vehicleId)
+  +void unlockVehicle(String vehicleId, String commandId)
+  +boolean verifyUnlock(String vehicleId, int timeoutSeconds)
+  +void lockVehicle(String vehicleId, String commandId)
+  +boolean verifyLock(String vehicleId, int timeoutSeconds)
+  +void classifyReturnedVehicle(String vehicleId, boolean issueReported)
+}
+
+class ReservationService {
+  -vehicleService: VehicleService
+  -clock: Clock
+  +BookingPreview validateBooking(String studentId, String vehicleId, String hubId)
+  +Reservation confirmReservation(String studentId, String vehicleId, String hubId, long expectedVersion)
+  +Reservation validatePickup(String reservationId, String studentId, String vehicleId, String hubId, DateTime at)
+  +void cancelReservation(String reservationId, String studentId, String reason)
+  +void expireReservation(String reservationId, DateTime at)
+  +void consumeReservation(String reservationId, String tripId)
+  +void reconcileVehicleHold(String reservationId)
+  +Reservation getActiveReservation(String studentId)
+}
+
+class TripService {
+  -reservationService: ReservationService
+  -vehicleService: VehicleService
+  -clock: Clock
+  +void requestPickup(String reservationId, String vehicleCode, String commandId)
+  +Trip startTrip(String reservationId, String studentId, String vehicleCode, String commandId)
+  +void requestReturnHub(String tripId, String hubId)
+  +String holdReturnPosition(String tripId, String hubId)
+  +void changeReturnPosition(String tripId, String positionId)
+  +boolean verifyParkingEvidence(String tripId)
+  +void reportTripIssue(String tripId, String description)
+  +Trip endTrip(String tripId, String commandId)
+  +void finalizeTrip(String tripId, DateTime endedAt)
+  +Trip reconcilePendingTrip(String tripId)
+  +Trip getTripSummary(String tripId, String studentId)
+}
+
+class DeviceControlGateway {
+  +requestControl(commandId: String, targetId: String, command: ControlCommand): ControlStatus
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  IN_USE
+  WAITING_CHARGE
+  CHARGING
+  RELOCATING
+  PENDING_CHECK
+  FAULTED
+}
+
+enum ControlCommand {
+  LOCK
+  UNLOCK
+  START_CHARGING
+  PAUSE_CHARGING
+  STOP_CHARGING_SAFE
+  DENY_POWER
+}
+
+enum ControlStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+Vehicle <|-- SharedVehicle
+Vehicle <|-- PrivateVehicle
+Reservation "0..*" --> "1" SharedVehicle
+Reservation "0..1" --> "0..1" Trip
+Trip "0..*" --> "1" SharedVehicle
+TripService ..> ReservationService
+TripService ..> VehicleService
+TripService ..> Trip
+TripService --> OperationalStore
+ReservationService ..> VehicleService
+ReservationService ..> Reservation
+ReservationService --> OperationalStore
+VehicleService ..> Vehicle
+VehicleService --> DeviceControlGateway
+@enduml
+
+@startuml submit3-33
+title 3.3 Đặt ô đỗ và sạc xe cá nhân (UC05–UC07)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class ParkingSpace <<tham chiếu>>
+class Vehicle <<tham chiếu>>
+class PrivateVehicle <<tham chiếu>>
+class OperationalStore <<tham chiếu>>
+class DeviceControlGateway <<tham chiếu>>
+
+class ParkingService {
+  -tGraceMinutes: int
+  +getVehicles(studentId: String): List<PrivateVehicle>
+  +getHubs(): List<Hub>
+  +checkAvailability(hubId: String, slotId: String, window: TimeWindow): AvailabilityResult
+  +confirmReservation(studentId: String, vehicleId: String, slotId: String, window: TimeWindow): ParkingReservation
+  +cancelReservation(reservationId: String): void
+  +checkIn(reservationId: String): boolean
+  +expireOverdueReservations(): List<ParkingReservation>
+  +reconcileSlot(slot: ParkingSpace): SpaceStatus
+}
+
+class ParkingReservation {
+  -reservationId: String
+  -studentId: String
+  -vehicleId: String
+  -hubId: String
+  -slotId: String
+  -windowStart: DateTime
+  -windowEnd: DateTime
+  -checkInDeadline: DateTime
+  -status: ReservationStatus
+  -version: int
+  -createdAt: DateTime
+  +markCheckedIn(): void
+  +cancel(): void
+  +expire(): void
+  +isWithinGrace(now: DateTime): boolean
+}
+
+class ChargingScheduleService {
+  -store: OperationalStore
+  +getActiveBookings(studentId: String): List<ParkingReservation>
+  +getChargers(hubId: String, connectorType: String): List<ChargingPort>
+  +checkAvailability(portId: String, window: TimeWindow): AvailabilityResult
+  +confirmSchedule(reservationId: String, portId: String, window: TimeWindow): ChargingSchedule
+  +cancelSchedule(scheduleId: String): void
+  +cancelScheduleByReservationExpiry(reservationId: String): void
+  +reconcilePort(port: ChargingPort): PortStatus
+}
+
+class ChargingSchedule {
+  -scheduleId: String
+  -reservationId: String
+  -portId: String
+  -hubId: String
+  -windowStart: DateTime
+  -windowEnd: DateTime
+  -qrCode: String
+  -status: ScheduleStatus
+  -version: int
+  -createdAt: DateTime
+  +markScheduled(): void
+  +markCharging(): void
+  +complete(): void
+  +cancel(): void
+  +expire(): void
+}
+
+class ChargingPort {
+  -portId: String
+  -hubId: String
+  -connectorType: String
+  -powerKw: double
+  -status: PortStatus
+  -version: int
+  +markReserved(): void
+  +markOccupiedWaiting(): void
+  +markCharging(): void
+  +markChargedFull(): void
+  +markAvailable(): void
+  +markPendingCheck(): void
+  +markFaulted(): void
+}
+
+class ChargingSessionService {
+  -controlTimeoutSec: int
+  +startSession(code: String, hubId: String): ChargingSession
+  +requestControl(targetId: String, command: ControlCommand): ControlStatus
+  +updateSessionReading(sessionId: String, batteryPct: int, powerKw: double, energyKwh: double): void
+  +stopSession(sessionId: String, reason: String): ChargingSession
+  +handleControlFailure(sessionId: String, command: ControlCommand): void
+  +handleElectricalFault(sessionId: String, faultCode: String): void
+}
+
+class ChargingSession {
+  -sessionId: String
+  -scheduleId: String[0..1]
+  -vehicleId: String
+  -portId: String
+  -hubId: String
+  -startedAt: DateTime
+  -endedAt: DateTime
+  -batteryLevelPct: int
+  -powerKw: double
+  -energyKwh: double
+  -estimatedCost: double
+  -status: SessionStatus
+  -faultCode: String
+  +markCharging(startedAt: DateTime): void
+  +updateReading(batteryPct: int, powerKw: double, energyKwh: double): void
+  +complete(endedAt: DateTime, finalEnergyKwh: double): void
+  +markFaulted(faultCode: String): void
+}
+
+enum ReservationStatus {
+  RESERVED
+  CHECKED_IN
+  CANCELLED
+  EXPIRED
+}
+
+enum SpaceStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  PENDING_CHECK
+  FAULTED
+}
+
+enum ScheduleStatus {
+  DRAFT
+  VALIDATING
+  SCHEDULED
+  CHARGING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum PortStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED_WAITING
+  CHARGING
+  CHARGED_FULL
+  PENDING_CHECK
+  FAULTED
+}
+
+enum SessionStatus {
+  INITIATED
+  CHARGING
+  COMPLETED
+  FAILED
+}
+
+enum ControlCommand {
+  LOCK
+  UNLOCK
+  START_CHARGING
+  PAUSE_CHARGING
+  STOP_CHARGING_SAFE
+  DENY_POWER
+}
+
+enum ControlStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+Vehicle <|-- PrivateVehicle
+ParkingService "1" --> "0..*" ParkingReservation
+ParkingService ..> ParkingSpace
+ParkingService ..> ChargingScheduleService
+ParkingService --> OperationalStore
+ParkingReservation "0..*" --> "1" ParkingSpace
+ParkingReservation "0..*" --> "1" PrivateVehicle
+ParkingReservation "1" <-- "0..*" ChargingSchedule
+ChargingScheduleService "1" --> "0..*" ChargingSchedule
+ChargingScheduleService ..> ChargingPort
+ChargingScheduleService --> OperationalStore
+ChargingSchedule "0..*" --> "1" ChargingPort
+ChargingSchedule "0..1" <-- "0..1" ChargingSession
+ChargingSessionService "1" --> "0..*" ChargingSession
+ChargingSessionService ..> ChargingPort
+ChargingSessionService --> DeviceControlGateway
+@enduml
+
+@startuml submit3-34
+title 3.4 Điều phối xe giữa các Hub (UC09)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Vehicle <<tham chiếu>>
+class SharedVehicle <<tham chiếu>>
+class Hub <<tham chiếu>>
+class OperationalStore <<tham chiếu>>
+
+class RebalanceController {
+  -dispatchService: DispatchService
+  +getEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
+  +createDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): ApiResponse
+}
+
+class DispatchService {
+  +filterEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
+  +processDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): DispatchOrder
+  +cancelDispatchOrder(orderId: String): void
+  +completeDispatchOrder(orderId: String): void
+}
+
+class DispatchOrder {
+  -orderId: String
+  -sourceHubId: String
+  -destHubId: String
+  -vehicleIds: List<String>
+  -transporterId: String
+  -status: OrderStatus
+  -createdAt: DateTime
+  +complete(): void
+  +cancel(): void
+}
+
+enum OrderStatus {
+  PENDING
+  IN_TRANSIT
+  COMPLETED
+  CANCELLED
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  RESERVED
+  IN_USE
+  WAITING_CHARGE
+  CHARGING
+  RELOCATING
+  PENDING_CHECK
+  FAULTED
+}
+
+RebalanceController --> DispatchService
+DispatchService --> OperationalStore
+DispatchService ..> DispatchOrder
+Vehicle <|-- SharedVehicle
+Hub "0..1" -- "0..*" SharedVehicle
+DispatchOrder "0..*" -- "1..*" SharedVehicle
+DispatchOrder ..> OrderStatus
+SharedVehicle ..> VehicleStatus
+@enduml
+
+@startuml submit3-35
+title 3.5 Điều phối lịch sạc theo công suất Hub (UC10)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class Hub <<tham chiếu>>
+class ChargingPort <<tham chiếu>>
+class ChargingSession <<tham chiếu>>
+class OperationalStore <<tham chiếu>>
+class DeviceControlGateway <<tham chiếu>>
+
+class ChargingSchedulerController {
+  -smartChargingService: SmartChargingService
+  +getProposedSchedule(hubId: String): ChargingPlan
+  +applyChargingSchedule(hubId: String, plan: ChargingPlan): ApiResponse
+}
+
+class SmartChargingService {
+  -iotController: DeviceControlGateway
+  +calculateSmartSchedule(hubId: String): ChargingPlan
+  +applyChargingSchedule(hubId: String, plan: ChargingPlan): boolean
+  +checkPowerConstraints(hubId: String, plan: ChargingPlan): boolean
+}
+
+class ChargingPlan {
+  -hubId: String
+  -expectedVersion: long
+  -activePortIds: List<String>
+  -queuedPortIds: List<String>
+  -proposedPowerKw: double
+}
+
+class ChargingCommand {
+  -commandId: String
+  -portId: String
+  -action: ControlCommand
+  -status: CommandState
+}
+
+enum ControlCommand {
+  LOCK
+  UNLOCK
+  START_CHARGING
+  PAUSE_CHARGING
+  STOP_CHARGING_SAFE
+  DENY_POWER
+}
+
+enum ControlStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+enum CommandState {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PortStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED_WAITING
+  CHARGING
+  CHARGED_FULL
+  PENDING_CHECK
+  FAULTED
+}
+
+enum SessionStatus {
+  INITIATED
+  CHARGING
+  COMPLETED
+  FAILED
+}
+
+ChargingSchedulerController --> SmartChargingService
+SmartChargingService --> OperationalStore
+SmartChargingService --> DeviceControlGateway
+SmartChargingService ..> ChargingPlan
+SmartChargingService ..> ChargingCommand
+Hub "1" *-- "0..*" ChargingPort
+ChargingPort "1" -- "0..*" ChargingSession
+ChargingPort ..> PortStatus
+ChargingSession ..> SessionStatus
+@enduml
+
+@startuml submit3-36
+title 3.6 Giám sát thiết bị và cách ly sự cố (UC11, UC14)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class OperationalStore <<tham chiếu>>
+class DeviceControlGateway <<tham chiếu>>
+
+class TelemetryService {
+  -telemetryTimeoutSec: int
+  -lowSocAlertThreshold: int
+  -hubFullRatioThreshold: double
+  +registerSensor(sensor: Sensor): void
+  +receiveTelemetry(event: TelemetryEvent): boolean
+  +validatePacket(event: TelemetryEvent): boolean
+  +updateState(event: TelemetryEvent): boolean
+  +evaluateAndAlert(event: TelemetryEvent): void
+  +publishEvent(eventType: String, event: TelemetryEvent): void
+  +checkTimeouts(): List<Sensor>
+}
+
+class Sensor {
+  -sensorId: String
+  -hubId: String
+  -deviceId: String
+  -type: SensorType
+  -status: SensorStatus
+  -lastSeen: DateTime
+  -lastEventTimestamp: DateTime
+  -simulated: boolean
+  +markOnline(ts: DateTime): void
+  +markOffline(): void
+  +isTimedOut(now: DateTime, timeoutSec: int): boolean
+}
+
+class TelemetryEvent {
+  -eventId: String
+  -hubId: String
+  -deviceId: String
+  -sensorType: SensorType
+  -batteryLevel: int
+  -availableSlots: int
+  -totalSlots: int
+  -powerKw: double
+  -energyKwh: double
+  -state: DeviceState
+  -faultCode: String
+  -timestamp: DateTime
+  +isWellFormed(): boolean
+  +isNewerThan(lastTs: DateTime): boolean
+}
+
+class IncidentService {
+  -controlTimeoutSec: int
+  +receiveAlert(type: ResourceType, resourceId: String, hubId: String, reason: String): Incident
+  +classifyAndPrioritize(incident: Incident, category: String, severity: Severity): void
+  +isolateResource(incident: Incident): IncidentStatus
+  +requestControl(targetId: String, command: ControlCommand): ControlStatus
+  +createWorkOrder(incident: Incident, assignedUnit: String): WorkOrder
+  +sendWorkOrder(wo: WorkOrder): boolean
+  +resendPendingWorkOrders(): void
+  +handleAffectedBookings(incident: Incident): void
+  +syncDashboard(incident: Incident): void
+}
+
+class Incident {
+  -incidentId: String
+  -resourceType: ResourceType
+  -resourceId: String
+  -hubId: String
+  -category: String
+  -description: String
+  -severity: Severity
+  -status: IncidentStatus
+  -reportedBy: String
+  -affectedSessionIds: List<String>
+  -version: int
+  -createdAt: DateTime
+  -resolvedAt: DateTime
+  +markIsolated(): void
+  +markPendingCheck(): void
+  +deferIsolation(): void
+  +cancel(): void
+  +resolve(): void
+}
+
+class WorkOrder {
+  -workOrderCode: String
+  -incidentId: String
+  -resourceId: String
+  -hubId: String
+  -errorDescription: String
+  -priority: Severity
+  -assignedUnit: String
+  -status: WorkOrderStatus
+  -createdAt: DateTime
+  -sentAt: DateTime
+  +markSent(): void
+  +markPendingResend(): void
+  +markInProgress(): void
+  +complete(): void
+}
+
+enum ResourceType {
+  VEHICLE
+  CHARGING_PORT
+  PARKING_SLOT
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  DRAFT
+  ISOLATED
+  PENDING_CHECK
+  DEFERRED
+  CANCELLED
+  RESOLVED
+}
+
+enum WorkOrderStatus {
+  CREATED
+  SENT
+  IN_PROGRESS
+  COMPLETED
+  PENDING_RESEND
+}
+
+enum SensorType {
+  VEHICLE_TRACKER
+  CHARGING_PORT_CONTROLLER
+  PARKING_SENSOR
+}
+
+enum SensorStatus {
+  ONLINE
+  OFFLINE
+}
+
+enum DeviceState {
+  PARKED
+  CHARGING
+  MOVING
+  FAULTED
+  OCCUPIED
+  EMPTY
+}
+
+enum ControlCommand {
+  LOCK
+  UNLOCK
+  START_CHARGING
+  PAUSE_CHARGING
+  STOP_CHARGING_SAFE
+  DENY_POWER
+}
+
+enum ControlStatus {
+  SUCCESS
+  FAILED
+  TIMEOUT
+}
+
+TelemetryService "1" --> "0..*" Sensor
+Sensor "1" --> "0..*" TelemetryEvent
+TelemetryService ..> TelemetryEvent
+TelemetryService ..> IncidentService
+TelemetryService --> OperationalStore
+IncidentService ..> Incident
+IncidentService ..> WorkOrder
+IncidentService --> DeviceControlGateway
+IncidentService --> OperationalStore
+Incident "1" --> "0..*" WorkOrder
+@enduml
+
+@startuml submit3-37
+title 3.7 Mô phỏng và áp dụng khuyến nghị (UC12–UC13)
+skinparam classAttributeIconSize 0
+hide empty members
+
+class OperationalStore <<tham chiếu>>
+
+class SimulationService {
+  -timeoutMs: long
+  +getNetworkSnapshot(): NetworkSnapshot
+  +getSavedScenario(scenarioId: String): SimulationScenario
+  +saveScenarioTemplate(params: ScenarioParams, operatorId: String): SimulationScenario
+  +runSimulation(scenarioParams: ScenarioParams, operatorId: String): SimulationScenario
+  -validateParams(scenarioParams: ScenarioParams): List<String>
+  -executeMovementModel(snapshot: NetworkSnapshot, params: ScenarioParams, timeSlots: int): List<ForecastStep>
+  -calculateBottlenecks(forecast: List<ForecastStep>, snapshot: NetworkSnapshot): List<Bottleneck>
+  -saveSimulationResult(resultId: String, forecastData: List<ForecastStep>, bottlenecks: List<Bottleneck>): void
+}
+
+class RecommendationService {
+  +generateRecommendations(scenario: SimulationScenario): List<Recommendation>
+  +getRecommendations(simulationId: String): List<Recommendation>
+  +applyRecommendations(simulationId: String, selectedList: List<Recommendation>, operatorId: String): List<CommandResult>
+  +rejectRecommendations(simulationId: String, reason: String, operatorId: String): void
+  -revalidateActions(actionList: List<Recommendation>, latestState: NetworkSnapshot): List<ValidationIssue>
+  -dispatchCommands(actionList: List<Recommendation>): List<CommandResult>
+  -compensateCommands(results: List<CommandResult>): List<CommandResult>
+}
+
+class NotificationService {
+  -maxPerUserPerHour: int
+  +sendNotification(recipientIds: List<String>, type: NotificationType, title: String, content: String, relatedId: String): List<Notification>
+  -checkRateLimit(userId: String, type: NotificationType): boolean
+}
+
+class Recommendation {
+  -recommendationId: String
+  -scenarioId: String
+  -type: RecommendationType
+  -description: String
+  -sourceHubId: String
+  -targetHubId: String
+  -vehicleCount: int
+  -priorityLevel: int
+  -expectedImpact: String
+  -status: RecommendationStatus
+  -decidedBy: String
+  -decidedAt: DateTime
+  -rejectReason: String
+  -referenceId: String
+  +updateStatus(newStatus: RecommendationStatus): void
+}
+
+class AuditLogService {
+  +saveAuditLog(operatorId: String, action: AuditAction, targetId: String, details: String): AuditLog
+}
+
+class SimulationScenario {
+  -scenarioId: String
+  -sourceTemplateId: String
+  -createdBy: String
+  -createdAt: DateTime
+  -params: ScenarioParams
+  -isTemplate: boolean
+  -status: ScenarioStatus
+  -snapshot: NetworkSnapshot
+  -snapshotTakenAt: DateTime
+  -forecastData: List<ForecastStep>
+  -bottlenecks: List<Bottleneck>
+  -runDurationMs: long
+  -errorMessage: String
+  -version: int
+}
+
+class Notification {
+  -notificationId: String
+  -recipientId: String
+  -type: NotificationType
+  -title: String
+  -content: String
+  -relatedId: String
+  -createdAt: DateTime
+  -isRead: boolean
+}
+
+class AuditLog {
+  -logId: String
+  -operatorId: String
+  -action: AuditAction
+  -targetId: String
+  -details: String
+  -timestamp: DateTime
+}
+
+enum ScenarioStatus {
+  DRAFT
+  RUNNING
+  COMPLETED
+  FAILED
+  APPLIED
+  REJECTED
+}
+
+enum RecommendationStatus {
+  PENDING
+  APPLIED
+  SKIPPED
+  REJECTED
+}
+
+enum RecommendationType {
+  RELOCATE_VEHICLES
+  CHARGING_PRIORITY
+  USER_REDIRECT
+}
+
+enum BottleneckType {
+  VEHICLE_SHORTAGE
+  PARKING_FULL
+  CHARGING_QUEUE_OVERLOAD
+}
+
+enum NotificationType {
+  REDIRECT_SUGGESTION
+  DISPATCH_ALERT
+  SYSTEM_ALERT
+}
+
+enum AuditAction {
+  TEMPLATE_SAVED
+  SIMULATION_RUN
+  SIMULATION_FAILED
+  RECOMMENDATION_APPLIED
+  RECOMMENDATION_REJECTED
+  APPLY_ROLLED_BACK
+}
+
+SimulationService "1" --> "0..*" SimulationScenario
+SimulationScenario "0..1" <-- "0..*" SimulationScenario : nạp từ mẫu
+SimulationScenario "1" --> "0..*" Recommendation
+SimulationService ..> RecommendationService
+SimulationService --> OperationalStore
+SimulationService ..> AuditLogService
+RecommendationService "1" --> "0..*" Recommendation
+RecommendationService ..> SimulationScenario
+RecommendationService --> OperationalStore
+RecommendationService ..> NotificationService
+RecommendationService ..> AuditLogService
+NotificationService "1" --> "0..*" Notification
+AuditLogService "1" --> "0..*" AuditLog
+@enduml

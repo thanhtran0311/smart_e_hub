@@ -1,1 +1,7 @@
-[]
+[
+  {"id":"H-01","lat":10.8674,"lon":106.8013,"name":"Ga Metro ĐHQG","zone":"Ga Metro","location":"Giao lộ Vành Đai ĐHQG và ga Metro số 1","x":26,"y":68,"lastTelemetryAt":"@now","offline":false,"version":1,"updatedAt":"@now"},
+  {"id":"H-02","lat":10.8781,"lon":106.8057,"name":"Ký túc xá Khu A","zone":"Khu A","location":"Cổng chính KTX A, đường Tạ Quang Bửu","x":47,"y":32,"lastTelemetryAt":"@now","offline":false,"version":1,"updatedAt":"@now"},
+  {"id":"H-03","lat":10.8735,"lon":106.8048,"name":"Thư viện Trung tâm","zone":"Trung tâm","location":"Quảng trường Thư viện Trung tâm ĐHQG-HCM","x":62,"y":51,"lastTelemetryAt":"@now","offline":false,"version":1,"updatedAt":"@now"},
+  {"id":"H-04","lat":10.8793,"lon":106.8069,"name":"Đại học Bách khoa","zone":"Bách khoa","location":"Khuôn viên cơ sở Dĩ An","x":77,"y":73,"lastTelemetryAt":"@now","offline":false,"version":1,"updatedAt":"@now"},
+  {"id":"H-05","lat":10.8887,"lon":106.7922,"name":"Ký túc xá Khu B","zone":"Khu B","location":"Cổng KTX B, tuyến xe buýt nội khu","x":79,"y":23,"lastTelemetryAt":"@now-8m","offline":true,"version":1,"updatedAt":"@now"}
+]
