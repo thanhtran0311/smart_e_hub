@@ -43,17 +43,6 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 
 ## Kiến trúc đang thực thi
 
-| Tầng | Tệp chính | Trách nhiệm |
-| --- | --- | --- |
-| Presentation | src/app.js, src/router.js, src/pages/, src/components/ | Shell, hash route, form, bản đồ, nhãn trạng thái và thông báo |
-| Application | src/application/ | Handler Sinh viên và Operator, sạc, mô phỏng, telemetry và xử lý sau commit |
-| Domain | src/domain/, src/utils/status.js | Điều kiện cấp phát, khung giờ, version, sức chứa, sự cố và thông báo |
-| Infrastructure | src/infrastructure/store.js, device.js | JSON seed, lưu/khôi phục, giao dịch cục bộ, AuthService và DeviceControlGateway mô phỏng |
-
-OperationalStore sao chép trạng thái thành draft, chạy validation và mọi thay đổi đồng bộ, ghi snapshot rồi mới công bố trạng thái mới. Nếu validation hoặc lưu trữ thất bại, trạng thái đã commit trước đó được giữ lại. Lệnh thiết bị được xác nhận qua các bước riêng để biểu diễn được timeout và bằng chứng vật lý trước khi hoàn tất nghiệp vụ.
-
-Mã nguồn có đủ 44 lớp mang tên trong Submit 3. Controller nhận thao tác qua router và event handler. Các thực thể Domain tham chiếu bằng ID và giữ cùng định dạng JSON khi lưu. Store khôi phục kiểu lớp khi đọc dữ liệu hoặc tạo bản nháp giao dịch. Lệnh điều phối và kế hoạch sạc lưu hàng đợi trước khi xử lý phản hồi mô phỏng sau commit.
-
 Xem [PDF Submit 3](docs/references/submission-3.pdf), [Deployment View](docs/submission-3/deployment-view.md), [Implementation View](docs/submission-3/development-view.md) và [44 lớp cùng 184 phương thức](docs/submission-3/class-and-method-descriptions.md).
 
 ## Đối chiếu use case và cách kiểm tra
