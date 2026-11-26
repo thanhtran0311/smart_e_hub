@@ -29,15 +29,15 @@ Các giá trị dưới đây tính theo gốc `16px`. Khi CSS tùy chỉnh ghi 
 
 Màu, typography, khoảng cách, bo góc và bóng dùng chung nằm trong [base.css](../../src/styles/base.css). Inter được đóng gói theo các tập Latin, Latin mở rộng và tiếng Việt. Markup dùng hình học SVG của Lucide cùng [SVG bản đồ](../../assets/images/campus-schematic.svg).
 
-## Khác biệt theo màn hình và ảnh so sánh
+## Khác biệt theo màn hình và ảnh giao diện hiện tại
 
-Mỗi ảnh đặt **Mockup · Trước · Sau** cạnh nhau. Playwright dùng Microsoft Edge headless với viewport **1365 × 920** và **390 × 844**, cùng tỉ lệ điểm ảnh. Ảnh chụp trạng thái ban đầu của từng màn hình, sau khi đăng nhập khi cần.
+Ảnh chụp trực tiếp từ ứng dụng trên Microsoft Edge. Bản desktop dùng khung **1365 × 920**. Bản di động rộng **390 px** chụp toàn bộ nội dung cuộn dọc, riêng hộp thoại đăng nhập dùng khung **390 × 844**.
 
-Bộ ảnh lưu lần đối chiếu đầu tiên. Giao diện hiện tại tách trang giới thiệu khỏi dashboard, yêu cầu đăng nhập để mở bản đồ và đã bỏ mã UC ở các mục điều hướng.
+Ảnh các màn nghiệp vụ có dữ liệu phát sinh từ thao tác trong kịch bản demo. Cột mô tả ghi lại các thay đổi so với giao diện trước đợt đối chiếu. [Kịch bản demo](demo-script.md)
 
 | Màn hình | Trước khi sửa → sau khi sửa | Desktop | 390 px |
 | --- | --- | --- | --- |
-| Giới thiệu | Trang gốc mở thẳng bản đồ → hero, logo BK, bốn thẻ số liệu, hai CTA phân hệ và lối vào bản đồ công khai. | [Ảnh](screenshots/mockup2/desktop-landing.png) | [Ảnh](screenshots/mockup2/390-landing.png) |
+| Giới thiệu | Trang gốc mở thẳng bản đồ → trang giới thiệu riêng với logo BK, bốn thẻ số liệu và hai lối đăng nhập theo phân hệ. | [Ảnh](screenshots/mockup2/desktop-landing.png) | [Ảnh](screenshots/mockup2/390-landing.png) |
 | Đăng nhập | Modal cũ viền và bóng đậm, lựa chọn tài khoản phía trên → modal trắng, nền mờ, nhãn phân hệ và nhóm nút ở chân form. | [Ảnh](screenshots/mockup2/desktop-login.png) | [Ảnh](screenshots/mockup2/390-login.png) |
 | Tra cứu và đặt xe | Sidebar tối, banner số liệu, bản đồ xanh và bảng xe phía dưới → header và sidebar trắng, thanh trạng thái, nền SVG theo mockup, ghim dạng thẻ, bộ lọc và inspector bên phải. | [Ảnh](screenshots/mockup2/desktop-hub-search.png) | [Ảnh](screenshots/mockup2/390-hub-search.png) |
 | Nhận và trả xe | Tiêu đề lớn và nút cùng một màu → hai thẻ theo nhóm nhận/trả, nút xanh lam và xanh lục, icon mở/khóa. | [Ảnh](screenshots/mockup2/desktop-pickup-return.png) | [Ảnh](screenshots/mockup2/390-pickup-return.png) |
@@ -49,13 +49,15 @@ Bộ ảnh lưu lần đối chiếu đầu tiên. Giao diện hiện tại tác
 | What-if | Cấu hình, kết quả và khuyến nghị xếp dọc → thiết lập và dự báo bên trái, khuyến nghị bên phải. | [Ảnh](screenshots/mockup2/desktop-what-if.png) | [Ảnh](screenshots/mockup2/390-what-if.png) |
 | Telemetry | Form dọc và log thẻ trắng → thanh nhập liệu gọn và log nền tối dùng font monospace. | [Ảnh](screenshots/mockup2/desktop-telemetry.png) | [Ảnh](screenshots/mockup2/390-telemetry.png) |
 
+Ảnh bản đồ khi chọn Ký túc xá Khu A. [Bản đồ Hub](screenshots/hub-map.png)
+
 ## Phần còn khác mockup
 
 - **Ở 390 px**, sidebar thật mở qua nút menu, inspector nằm dưới bản đồ và các form xếp dọc. Bảng cuộn trong khung riêng. Ảnh mockup hẹp hơn vì sidebar cố định.
 - **Dữ liệu và trạng thái** khác giữa hai phiên. Ví dụ, Ga Metro có 8 xe đủ điều kiện trong dự án và 3 xe trong mockup. Mockup mở sẵn một lượt đặt xe và có log IoT, sự cố và đề xuất dựng sẵn. Ứng dụng hiển thị trạng thái rỗng hoặc nội dung đã phát sinh từ thao tác. Ô đặt xe tiếp tục dùng thao tác đặt trực tiếp của dự án. Trường đăng nhập điền sẵn tài khoản demo và vẫn có ba lựa chọn tài khoản.
 - **Một số điều khiển chỉ có ở bản mẫu**, gồm khoảng cách định vị 180 m, nút nạp ví, chọn xe rồi xác nhận riêng, và các nút giả lập theo kịch bản cố định. Thanh trạng thái thật hiển thị số Hub trực tuyến. Bản đồ dùng Ga Metro làm điểm quay về và tra cứu Hub trên màn hình bản đồ.
 
-## Kiểm chứng
+## Kiểm chứng trong đợt đối chiếu ban đầu
 
 Playwright chụp và đối chiếu 22 ảnh ghép. Kiểm tra thêm lối vào bản đồ công khai, lọc theo tên và theo loại xe ở cả hai kích thước.
 
