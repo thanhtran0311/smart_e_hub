@@ -16,9 +16,12 @@ import { hubMetrics } from "../../domain/resources.js";
 import { incidentCategories, incidentSeverities } from "../../domain/incidents.js";
 import { TelemetryService } from "../../application/telemetry.js";
 import { MonitoringService } from "../../application/monitoring.js";
+import { SimulationService } from "../../application/simulation.js";
 import {
   RebalanceController,
   ChargingSchedulerController,
+  IncidentService,
+  RecommendationService,
 } from "../../application/operator.js";
 
 const stack = (body, className = "") => '<div class="stack ' + className + '">' + body + "</div>";
@@ -389,7 +392,8 @@ function incidents(s, now, ui) {
     assets = [...s.vehicles, ...s.ports, ...s.slots].filter(
       (x) => x.hubId === id,
     );
-  const severities = Object.keys(incidentSeverities);
+  const closed = (incident) => ["RESOLVED", "CANCELLED"].includes(incident.status);
+  const pendingResend = s.workOrders.some((order) => order.status === "PENDING_RESEND");
   return stack(
     card(
       "Ghi nhận sự cố",
@@ -413,15 +417,13 @@ function incidents(s, now, ui) {
     ) +
       card(
         "Hồ sơ xử lý",
-        s.incidents.length
-          ? s.incidents
-              .toSorted((a, b) =>
-                Number(a.status === "RESOLVED") - Number(b.status === "RESOLVED") ||
-                severities.indexOf(b.severity || "MEDIUM") - severities.indexOf(a.severity || "MEDIUM") ||
-                b.createdAt - a.createdAt)
+        (pendingResend ? button("Gửi lại các phiếu đang chờ", "incident.resendPending", {}, "secondary") : "") +
+        (s.incidents.length
+          ? IncidentService.syncDashboard(s)
               .map((i) => {
                 const wo = s.workOrders.find((w) => w.incidentId === i.id);
-                const stop = i.status !== "RESOLVED" && s.ports.some((p) => p.id === i.targetId && p.relayOn)
+                const inspectionStatus = assets.find((asset) => asset.id === i.targetId)?.inspectionStatus;
+                const stop = !closed(i) && s.ports.some((p) => p.id === i.targetId && p.relayOn)
                   ? button("Yêu cầu ngắt điện an toàn", "incident.stopCharging", { id: i.id, outcome: "ok" }, "danger") +
                     button("Mô phỏng ngắt điện lỗi", "incident.stopCharging", { id: i.id, outcome: "fault" }, "secondary")
                   : "";
@@ -452,7 +454,8 @@ function incidents(s, now, ui) {
                         "secondary",
                       )
                     : i.status === "IN_REPAIR"
-                      ? button("Xác nhận sửa xong", "incident.resolve", {
+                      ? (wo?.status === "SENT" ? button("Xác nhận đang sửa", "incident.workInProgress", { id: i.id }, "secondary") : "") +
+                        button("Xác nhận sửa xong", "incident.resolve", {
                           id: i.id,
                         })
                       : "";
@@ -465,13 +468,19 @@ function incidents(s, now, ui) {
                       (incidentSeverities[i.severity] || "Trung bình"),
                     badge(i.status),
                   ) +
-                  (i.status === "RESOLVED" ? "" : '<details><summary>Phân loại và xếp mức độ</summary>' +
+                  (closed(i) ? "" : '<details><summary>Phân loại và xếp mức độ</summary>' +
                     form("incident.classify",
                       hidden("id", i.id) +
                       field("Loại sự cố", select("category", Object.entries(incidentCategories), i.category || "OTHER")) +
                       field("Mức độ", select("severity", Object.entries(incidentSeverities), i.severity || "MEDIUM")) +
                       submit("Lưu phân loại", "secondary")) + "</details>") +
+                  (inspectionStatus && !closed(i) ? line("Kiểm tra tài nguyên", i.targetId, badge(inspectionStatus)) : "") +
                   row(stop + controls) +
+                  (IncidentService.canCancel(s, i) ? '<details><summary>Hủy hồ sơ sự cố</summary>' +
+                    form("incident.cancel", hidden("id", i.id) +
+                      field("Lý do hủy", '<input name="reason" maxlength="240" required>') +
+                      submit("Xác nhận hủy", "secondary")) + "</details>" : "") +
+                  (i.cancelReason ? muted(i.cancelReason) : "") +
                   (wo ? line(wo.id, (s.teams.find((team) => team.id === wo.teamId)?.name || "Phiếu bảo trì") +
                     " · Ưu tiên " + (incidentSeverities[wo.priority || i.severity] || "Trung bình"), badge(wo.status)) : "") +
                   (i.affected || [])
@@ -487,22 +496,24 @@ function incidents(s, now, ui) {
                 );
               })
               .join("")
-          : empty("Chưa có hồ sơ sự cố."),
+          : empty("Chưa có hồ sơ sự cố.")),
       ),
     "ops-columns incident-columns",
   );
 }
 
 function whatIf(s, now, ui) {
-  const pair = hubPair(s, ui),
-    scenario = s.scenarios.findLast((item) => Array.isArray(item.forecast));
+  const pair = hubPair(s, ui);
+  const results = s.scenarios.filter((item) => ["COMPLETED", "FAILED"].includes(item.status));
+  const resultId = results.find((item) => item.id === ui.savedScenarioId)?.id || results.at(-1)?.id;
+  const scenario = resultId && SimulationService.getSavedScenario(s, resultId);
   const templates = s.scenarios.filter((item) => item.status === "DRAFT");
   const recLabel = (item) => ({
     REDISTRIBUTE: "Điều phối " + item.amount + " xe",
     RESCHEDULE_CHARGING: "Áp dụng thứ tự sạc tại Hub",
     REDIRECT_USERS: "Thông báo chuyển hướng nhận xe",
   })[item.type];
-  const recs = s.recommendations.filter((r) => r.scenarioId === scenario?.id);
+  const recs = RecommendationService.getRecommendations(s, scenario?.id);
   const snapshotHasSensorFreshness = scenario?.snapshot?.every((hub) => Array.isArray(hub.staleSensorIds));
   const confidence = scenario?.confidence === "LIMITED" ? "Độ tin cậy hạn chế"
     : snapshotHasSensorFreshness ? "Độ tin cậy cao" : "Chưa có đánh giá độ mới từng cảm biến";
@@ -524,7 +535,9 @@ function whatIf(s, now, ui) {
               )
               .join("") +
             "</fieldset>" +
-            submit("Áp dụng các mục đã chọn"),
+            submit("Áp dụng các mục đã chọn") + '<details><summary>Từ chối các mục đã chọn</summary>' +
+            field("Lý do từ chối", '<input name="reason" maxlength="240">') +
+            '<button type="submit" class="btn secondary" data-submit-action="recommendation.rejectBatch">Từ chối nhóm</button></details>',
         )
       : "";
   const recActions = (r) => {
@@ -537,7 +550,9 @@ function whatIf(s, now, ui) {
               { id: r.id },
               "secondary",
             ),
-      );
+      ) + '<details><summary>Từ chối kèm lý do</summary>' + form("recommendation.reject",
+        hidden("id", r.id) + field("Lý do từ chối", '<input name="reason" maxlength="240" required>') +
+        submit("Lưu lý do và từ chối", "secondary")) + "</details>";
     if (r.status === "APPLIED")
       return button("Xử lý bù", "recommendation.compensate", { id: r.id }, "secondary");
     const order = s.orders.find((item) => item.id === r.orderId);
@@ -579,8 +594,10 @@ function whatIf(s, now, ui) {
           templates.slice().reverse().map((item) => line(item.name,
             item.demandPct + "% · " + item.durationMin + " phút",
             button("Chạy mẫu", "simulation.run", { templateId: item.id }, "secondary"))).join("") + "</details>" : "") +
+        (results.length ? field("Kết quả đã lưu", setting("savedScenarioId", [["", "Mới nhất"], ...results.toReversed().map((item) =>
+          [item.id, time(item.createdAt) + " · " + hubName(s, item.destId) + " · " + item.id])], ui.savedScenarioId || "")) : "") +
         '<section class="forecast"><h3>Dự báo diễn biến</h3>' +
-        (scenario
+        (scenario?.status === "FAILED" ? empty("Mô phỏng thất bại: " + scenario.error) : scenario
           ? line(
               hubName(s, scenario.destId),
               "Bản chụp " +
@@ -634,16 +651,23 @@ function whatIf(s, now, ui) {
                 (r) =>
                   line(
                     recLabel(r),
-                    r.note ||
+                    r.note || r.reason ||
                       hubName(s, r.sourceId) + " → " + hubName(s, r.destId),
                     badge(r.status),
-                  ) + recActions(r),
+                  ) + recActions(r) + recommendationResults(s, r),
               )
               .join("") + batch
           : empty("Chưa có khuyến nghị cho kịch bản này."),
       ),
     "ops-columns scenario-columns",
   );
+}
+
+function recommendationResults(s, recommendation) {
+  const results = RecommendationService.getCommandResults(s, recommendation);
+  if (!results.length) return "";
+  return '<details><summary>Kết quả lệnh</summary>' + results.map((item) =>
+    line(item.id, item.message, badge(item.status))).join("") + "</details>";
 }
 
 function telemetry(s, now, ui) {
@@ -655,7 +679,10 @@ function telemetry(s, now, ui) {
     ? field("Ô có xe", signal("occupied", selected.resource.vehicleId))
     : selected?.type === "CHARGING_PORT"
       ? field("Đã cắm cáp", signal("plugged", selected.resource.plugged)) +
-        field("Relay đang cấp điện", signal("relayOn", selected.resource.relayOn))
+        field("Relay đang cấp điện", signal("relayOn", selected.resource.relayOn)) +
+        field("Pin phiên sạc (%)", '<input name="batteryPct" type="number" min="0" max="100" step="any" placeholder="Tùy chọn">') +
+        field("Công suất đo được (kW)", '<input name="powerKw" type="number" min="0" step="any" placeholder="Tùy chọn">') +
+        field("Điện năng tích lũy (kWh)", '<input name="energyKwh" type="number" min="0" step="any" placeholder="Tùy chọn">')
       : selected?.type === "VEHICLE"
         ? field("Mức pin gửi từ xe (%)", number("battery", selected.resource.soc, 0, 100))
         : field("Công suất đo được (kW)", '<input name="powerKw" type="number" min="0" step="0.1" placeholder="Tùy chọn">');
@@ -693,7 +720,8 @@ function telemetry(s, now, ui) {
             ) +
             payloadField +
             (selected ? field("Mô tả lỗi thiết bị", '<input name="fault" maxlength="240" placeholder="Tùy chọn">') : "") +
-            submit("Phát gói tin"),
+            submit("Phát gói tin") +
+            '<button type="submit" class="btn secondary" data-submit-action="telemetry.register">Đăng ký cảm biến</button>',
         ) + "</section>" +
       card(
         "Nhật ký gói tin",

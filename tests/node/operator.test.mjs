@@ -5,11 +5,15 @@ import {
   operatorCommand,
   previewDispatch,
   proposeSchedule,
+  AuditLogService,
 } from "../../src/application/operator.js";
+import { SimulationService } from "../../src/application/simulation.js";
+import { ChargingSchedule, Recommendation } from "../../src/domain/entities.js";
+import { queueControl } from "../../src/infrastructure/device.js";
 import { operatorView } from "../../src/pages/operator/views.js";
 import { hubMetrics } from "../../src/domain/resources.js";
 import { processPendingEffects } from "../../src/application/pending-effects.js";
-import { studentCommand } from "../../src/application/student.js";
+import { expireStudentHolds, studentCommand } from "../../src/application/student.js";
 import { checkSensorTimeouts, triggerRebalanceAlertIfNeeded } from "../../src/application/telemetry.js";
 
 async function setup() {
@@ -123,6 +127,7 @@ test("UC11 blocks allocations, requires physical safety, records affected bookin
   );
   run("incident.isolate", { id, outcome: "OK" });
   assert.equal(store.state.incidents.at(-1).status, "PENDING_CHECK");
+  assert.equal(store.state.ports.find((row) => row.id === targetId).inspectionStatus, "PENDING_CHECK");
   assert.equal(
     store.state.ports.find((x) => x.id === targetId).status,
     "CHARGING",
@@ -145,14 +150,136 @@ test("UC11 blocks allocations, requires physical safety, records affected bookin
   run("incident.work", { id, outcome: "TIMEOUT" });
   const code = store.state.workOrders.at(-1).id;
   assert.equal(store.state.workOrders.at(-1).priority, "CRITICAL");
-  run("incident.work", { id, outcome: "OK" });
+  assert.match(run("incident.resendPending"), /1 phiếu/);
   assert.equal(store.state.workOrders.length, 1);
   assert.equal(store.state.workOrders[0].id, code);
   assert.equal(store.state.workOrders[0].priority, "CRITICAL");
+  run("incident.workInProgress", { id });
+  assert.equal(store.state.workOrders[0].status, "IN_PROGRESS");
   run("incident.remedy", { id, recordId: future.id, decision: "CANCELLED" });
   run("incident.resolve", { id });
   assert.equal(store.state.ports.find((x) => x.id === targetId).blocked, false);
   assert.equal(store.state.workOrders[0].status, "DONE");
+});
+
+test("UC11 hủy hồ sơ thủ công trước cách ly và giữ chặn khi có cảnh báo cảm biến", async () => {
+  const { store, run } = await setup();
+  run("incident.open", { targetId: "E-102", reason: "Báo nhầm" });
+  const first = store.state.incidents.at(-1).id;
+  run("incident.cancel", { id: first, reason: "Đã xác minh báo nhầm" });
+  assert.equal(store.state.incidents.at(-1).status, "CANCELLED");
+  assert.equal(store.state.vehicles.find((row) => row.id === "E-102").blocked, false);
+  run("incident.open", { targetId: "E-102", reason: "Kiểm tra xe" });
+  const second = store.state.incidents.at(-1).id;
+  assert.notEqual(first, second);
+  run("telemetry.emit", { hubId: "H-01", deviceId: "E-102", fault: "Khóa kẹt" });
+  assert.throws(() => run("incident.cancel", { id: second }), /Chỉ hủy/);
+  assert.equal(store.state.vehicles.find((row) => row.id === "E-102").blocked, true);
+});
+
+test("UC14 đăng ký cảm biến riêng, nhận đủ số đo và sạc đầy vẫn giữ cáp đến khi rút", async () => {
+  const { store, run } = await setup();
+  const input = { hubId: "H-01", deviceId: "CHG-01-01", plugged: true, relayOn: true };
+  run("telemetry.register", input);
+  run("telemetry.register", input);
+  assert.equal(store.state.sensors.filter((row) => row.id === input.deviceId).length, 1);
+  assert.equal(store.state.telemetry.length, 0);
+  assert.equal(store.state.sensors[0].online, false);
+  run("telemetry.emit", { ...input, batteryPct: 101, powerKw: 7, energyKwh: 2 });
+  assert.equal(store.state.telemetry.at(-1).result, "REJECTED_CORRUPT");
+  run("telemetry.emit", { ...input, batteryPct: 95, powerKw: 6, energyKwh: 2 });
+  const session = () => store.state.sessions.find((row) => row.id === "CSS-01");
+  const port = () => store.state.ports.find((row) => row.id === input.deviceId);
+  assert.equal(session().batteryPct, 95);
+  assert.equal(session().measuredPowerKw, 6);
+  assert.equal(session().energyKwh, 2);
+  run("telemetry.emit", { ...input, batteryPct: 100, powerKw: 6, energyKwh: 2.5 });
+  assert.equal(port().status, "CHARGED_FULL");
+  assert.equal(port().relayOn, false);
+  assert.equal(port().plugged, true);
+  assert.equal(session().status, "STOPPED");
+  store.login("student02", "123456");
+  store.transaction((state, now) => studentCommand(state, "unplugCharger", { scheduleId: session().scheduleId }, { user: store.user, now }));
+  assert.equal(port().status, "AVAILABLE");
+  assert.equal(session().status, "COMPLETED");
+});
+
+test("UC07 lỗi điện chưa kết thúc phiên đang cấp điện và chốt FAILED sau ngắt an toàn", async () => {
+  const { store, run } = await setup();
+  const { portId, scheduleId, userId } = store.state.sessions[0];
+  run("telemetry.emit", { hubId: "H-01", deviceId: portId, plugged: true, relayOn: true, fault: "Mất ổn định điện áp" });
+  const incident = store.state.incidents.at(-1);
+  assert.equal(store.state.sessions[0].electricalFault, true);
+  assert.equal(store.state.sessions[0].status, "CHARGING");
+  assert.ok(store.state.notifications.some((row) => row.userId === userId && row.relatedId === incident.id));
+  run("incident.stopCharging", { id: incident.id, outcome: "ok" });
+  store.login("student02", "123456");
+  store.transaction((state, now) => studentCommand(state, "unplugCharger", { scheduleId }, { user: store.user, now }));
+  assert.equal(store.state.sessions[0].status, "FAILED");
+  assert.equal(store.state.ports.find((row) => row.id === portId).status, "OUT_OF_SERVICE");
+});
+
+test("UC12 lưu kết quả timeout và trả danh sách lỗi tham số", async () => {
+  const { store, run } = await setup();
+  assert.equal(SimulationService.validateParams(store.state, { sourceId: "H-01", destId: "H-01", durationMin: 0, demandPct: -1 }).length, 3);
+  store.transaction((state) => { state.config.simulation.computeTimeoutMs = 0; });
+  assert.match(run("simulation.run", { sourceId: "H-01", destId: "H-02", demandPct: 200, durationMin: 30 }), /thất bại/);
+  const result = SimulationService.getSavedScenario(store.state, store.state.scenarios.at(-1).id);
+  assert.equal(result.status, "FAILED");
+  assert.match(result.error, /thời hạn/);
+  assert.match(operatorView("what-if", store.state, store.now(), {}), /Mô phỏng thất bại/);
+});
+
+test("UC13 trả các lỗi kiểm tra trước khi phát lệnh và lưu lý do từ chối cả nhóm", async () => {
+  const { store, run } = await setup();
+  run("simulation.run", { sourceId: "H-01", destId: "H-02", demandPct: 500, durationMin: 60 });
+  const scenarioId = store.state.scenarios.at(-1).id;
+  const ids = store.state.recommendations.filter((row) => row.scenarioId === scenarioId).map((row) => row.id);
+  assert.ok(ids.length > 1);
+  store.transaction((state) => { state.hubs.find((row) => row.id === "H-02").offline = true; });
+  const before = store.state;
+  assert.match(run("recommendation.batch", { scenarioId, ids }), /dừng cả nhóm/);
+  const failures = store.state.audit.filter((row) => row.action === "recommendation.apply" && row.result === "FAILURE");
+  assert.deepEqual(new Set(failures.map((row) => row.targetId)), new Set(ids));
+  assert.deepEqual(store.state.orders, before.orders);
+  assert.deepEqual(store.state.notifications, before.notifications);
+  run("recommendation.rejectBatch", { scenarioId, ids, reason: "Chờ khôi phục Hub" });
+  assert.ok(store.state.recommendations.every((row) => row.status === "REJECTED" && row.reason === "Chờ khôi phục Hub" && row.rejectedBy === store.user.id));
+});
+
+test("UC13 timeout sau commit hủy lệnh sạc còn chờ và ghi đối soát", async () => {
+  const { store } = await setup();
+  const hubId = "H-01", planId = "TEST-PLAN";
+  store.transaction((state, now) => {
+    state.recommendations.push(new Recommendation({ id: "TEST-REC", planId, appliedBy: store.user.id,
+      type: "RESCHEDULE_CHARGING", status: "APPLIED" }));
+    for (const [id, outcome] of [["CHG-01-02", "timeout"], ["CHG-01-03", "ok"]]) {
+      const port = state.ports.find((row) => row.id === id);
+      const booking = new ChargingSchedule({ id: "SCH-" + id, hubId, portId: id, start: now, end: now + 10_000,
+        userId: "U-01", vehicleId: "PV-01", status: "PLUGGED" });
+      port.markOccupiedWaiting(booking);
+      state.schedules.push(booking);
+      queueControl(state, id, "START_CHARGING", now, { planId, hubId, scheduleId: booking.id, outcome });
+    }
+  });
+  processPendingEffects(store);
+  assert.deepEqual(store.state.deviceCommands.map((row) => row.result), ["TIMEOUT", "SKIPPED"]);
+  assert.equal(store.state.recommendations[0].status, "PENDING_CHECK");
+  assert.equal(store.state.recommendations[0].compensationResults.length, 2);
+  assert.equal(store.state.ports.find((row) => row.id === "CHG-01-03").relayOn, false);
+  assert.equal(store.state.audit.at(-1).action, "recommendation.compensate");
+});
+
+test("Audit ghi lỗi nghiệp vụ sau rollback mà giữ nguyên tài nguyên", async () => {
+  const { store } = await setup();
+  const before = store.state;
+  assert.throws(() => AuditLogService.runOperatorTransaction(store, store.user, "dispatch.start", { id: "MISSING" }, (state) => {
+    state.vehicles[0].status = "RELOCATING";
+    throw new Error("Lệnh không còn hiệu lực.");
+  }), /không còn hiệu lực/);
+  assert.deepEqual(store.state.vehicles, before.vehicles);
+  assert.equal(store.state.audit.at(-1).result, "FAILURE");
+  assert.equal(store.state.audit.at(-1).targetId, "MISSING");
 });
 
 test("UC12–13 isolates forecast, revalidates stale dispatch and compensates a released command", async () => {
@@ -468,10 +595,13 @@ test("UC14 nhận telemetry ô/cổng, lập hồ sơ lỗi và theo dõi timeou
   run("telemetry.emit", { hubId: "H-01", deviceId: "CHG-01-02", plugged: false, relayOn: false });
   store.advance(2);
   store.transaction(checkSensorTimeouts);
+  store.transaction(expireStudentHolds);
   assert.equal(store.state.sensors.find((row) => row.id === "CHG-01-02").online, false);
+  assert.equal(store.state.ports.find((row) => row.id === "CHG-01-02").blocked, false);
   assert.equal(store.state.hubs[0].offline, false);
   run("telemetry.emit", { hubId: "H-01", deviceId: "CHG-01-02", plugged: false, relayOn: false });
   assert.equal(store.state.sensors.find((row) => row.id === "CHG-01-02").online, true);
+  assert.equal(store.state.ports.find((row) => row.id === "CHG-01-02").sensorOffline, false);
 });
 
 test("UC12 lưu mẫu, chạy lại và báo ba loại điểm nghẽn trên bản chụp", async () => {

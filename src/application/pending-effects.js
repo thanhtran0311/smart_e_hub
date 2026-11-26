@@ -2,6 +2,7 @@ import { isHubOnline } from "../domain/resources.js";
 import { usable } from "../domain/student-rules.js";
 import { ACTIVE_CHARGING as activeSchedules, CONTROL_RESULT } from "../utils/status.js";
 import { ChargingSessionService } from "./charging.js";
+import { RecommendationService } from "./operator.js";
 
 function canProcess(state, request, now) {
   const schedule = state.schedules.find((row) => row.id === request.scheduleId);
@@ -27,7 +28,7 @@ export function processPendingEffects(store) {
   for (const { id } of ready)
     store.transaction((state, now) => {
       const request = state.deviceCommands.find((row) => row.id === id);
-      if (!canProcess(state, request, now)) return;
+      if (request.result !== CONTROL_RESULT.PENDING || !canProcess(state, request, now)) return;
       const schedule = state.schedules.find((row) => row.id === request.scheduleId);
       const port = state.ports.find((row) => row.id === request.targetId);
       if (!schedule || schedule.portId !== port?.id || !activeSchedules.includes(schedule.status) ||
@@ -38,9 +39,11 @@ export function processPendingEffects(store) {
       if (!usable(port) || !port.plugged || port.sensorPlugged === false ||
           port.scheduleId !== schedule.id || port.relayOn || port.sensorRelayOn) {
         Object.assign(request, { result: CONTROL_RESULT.FAILED, resolvedAt: now, message: "Cổng chưa xác nhận điều kiện an toàn." });
+        RecommendationService.compensateFailedPlan(state, request, now);
         return;
       }
       if (ChargingSessionService.hasPowerFor(state, port, now))
         ChargingSessionService.energize(state, schedule, now, request.outcome, request);
+      RecommendationService.compensateFailedPlan(state, request, now);
     });
 }

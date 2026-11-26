@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OperationalStore } from "../../src/infrastructure/store.js";
+import { AuthService, OperationalStore } from "../../src/infrastructure/store.js";
 import {
   ChargingCommand, ChargingPlan, Hub, ParkingReservation, PrivateVehicle,
   Reservation, SharedVehicle, User, Vehicle,
@@ -13,6 +13,32 @@ import {
 import { readSeed, demoStore } from "./seed.mjs";
 import { operatorCommand, proposeSchedule } from "../../src/application/operator.js";
 import { studentCommand } from "../../src/application/student.js";
+
+test("VNU-SSO mô phỏng nhận token mẫu và store tiếp tục dùng phiên JSON cũ", async () => {
+  const store = await demoStore();
+  const { users } = store.state;
+  assert.equal(AuthService.authenticateVnuSso("mock-vnu-sso:U-01", users).username, "student01");
+  assert.equal(AuthService.validateSession("mock-vnu-sso:U-01", store.state), false);
+  assert.throws(() => AuthService.authenticateVnuSso("U-01", users), /mô phỏng/);
+  assert.throws(() => store.login("student01", "sai"), /mật khẩu/);
+  assert.equal(store.login("student01", "123456").id, "U-01");
+  assert.equal(AuthService.validateSession("mock-vnu-sso:U-01", store.state), true);
+  assert.equal(AuthService.validateSession("U-01", store.state), true);
+  assert.equal(AuthService.validateSession("mock-vnu-sso:U-99", store.state), false);
+  AuthService.logout(store);
+  assert.equal(store.user, null);
+  assert.equal(AuthService.validateSession("mock-vnu-sso:U-01", store.state), false);
+});
+
+test("OperationalStore đọc snapshot, cấu hình Hub và commit qua API UML", async () => {
+  const store = await demoStore();
+  const before = store.getRealtimeNetworkStatus();
+  assert.equal(before, store.state);
+  assert.equal(store.readConfig("T_HOLD_MIN"), before.config.params.T_HOLD_MIN);
+  assert.equal(store.readConfig("HUB_POWER_LIMIT", "H-01"), before.config.hubPowerLimitKw["H-01"]);
+  store.beginTransaction((draft) => { draft.offsetMs += 1000; });
+  assert.equal(store.getRealtimeNetworkStatus().offsetMs, before.offsetMs + 1000);
+});
 
 test("Seed mô tả xe, vị trí, tài khoản, phiên sạc và lịch tương lai nhất quán", async () => {
   const store = await demoStore();

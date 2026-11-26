@@ -55,6 +55,8 @@ const labels = {
   IN_REPAIR: "Đang bảo trì",
   RESOLVED: "Đã xử lý",
   SENT: "Đã gửi",
+  IN_PROGRESS: "Đang thực hiện",
+  CHARGED_FULL: "Đã sạc đầy",
   DONE: "Đã hoàn tất bảo trì",
   PENDING_RESEND: "Chờ gửi lại",
   IGNORED_DUPLICATE: "Đã bỏ gói trùng",

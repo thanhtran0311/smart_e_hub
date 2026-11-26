@@ -1,80 +1,112 @@
 ﻿ĐỐI CHIẾU SUBMIT 3 VÀ SPA SMART E-MOBILITY HUB
-Bản cập nhật sau refactor 41 lớp. Rà cây mã nguồn hiện tại ngày 26/11/2026.
+Bản cập nhật sau khi đưa 38 phương thức còn lại về đúng lớp UML.
 Nguồn UML là docs/references/submission-3.pdf, mục 2.3 và mục 3, Bảng 4–10, trang in 6–24.
 Tên compensateCommands theo Bảng 10. Sơ đồ cuối dùng tên rollbackCommands.
-Các đường dẫn src/ và tests/ tính từ thư mục gốc C:/Code/smart_e_hub.
+Đường dẫn trong bảng tính từ thư mục gốc C:/Code/smart_e_hub.
 
 CÁCH ĐỌC
-Mỗi cặp lớp và phương thức trong Bảng 4–10 tính một dòng. Tên trùng ở các lớp khác nhau được đếm riêng.
-Đúng lớp — Có khai báo hoặc thành viên JavaScript cùng tên trong chính lớp UML. Tính phương thức tĩnh và instance.
-Ánh xạ — Hành vi nằm trong phương thức khác, hàm, getter, hoặc một bước của luồng.
-Thiếu — Hành vi chính chưa chạy. Dòng mã được dẫn là phần liên quan để đối chiếu.
-C — Có hành vi chính trong phạm vi MVP, kể cả thao tác thiết bị mô phỏng được quy định ở mục 2.3.
-P — Có một phần hành vi. Mỗi dòng nêu điều kiện, dữ liệu hoặc kết quả chưa đủ.
-N — Chưa có hành vi chính. Mã trạng thái và trường dữ liệu riêng lẻ chưa được tính là triển khai.
-Tên và lớp là phép đếm cấu trúc. Chữ ký, phạm vi truy cập và giá trị trả về có thể khác giữa UML và JavaScript.
-Nhãn hành vi là kết quả rà thủ công; 40/40 kiểm thử nghiệp vụ là kết quả chạy test riêng.
+Mỗi cặp lớp và phương thức trong Bảng 4–10 tính một dòng. Tên lặp ở lớp khác được đếm riêng.
+Đúng lớp nghĩa là tên được khai báo trực tiếp trong chính lớp JavaScript tương ứng. Kiểm tra cả phương thức tĩnh và instance.
+C ghi nhận hành vi chính trong MVP. M ghi nhận hai phương thức VNU-SSO chạy với token mẫu và phiên cục bộ.
+Chữ ký JavaScript tiếp tục nhận snapshot và ngữ cảnh theo các luồng SPA.
 
 KẾT QUẢ
-SPA có đủ 44/44 lớp UML đã khai báo.
-Đúng tên và đúng lớp: 116/184 (63,0%), tăng từ 1/184 trước refactor.
-Trùng tên ở bất kỳ đâu: 123/184 dòng (66,8%), tương ứng 101/159 tên duy nhất.
-Có hành vi chính: 140/184 (76,1%). Có một phần: 38/184 (20,7%). Chưa có: 6/184 (3,3%).
-Trong 116 dòng đúng lớp, 102 có hành vi chính và 14 có một phần.
-Còn 68 dòng chưa có khai báo đúng lớp. Chúng gồm 38 dòng có hành vi chính, 24 dòng có một phần và 6 dòng chưa có.
-Hai đánh giá được làm rõ so với bản trước: Reservation.isActive hẹp hơn UML khi đã bắt đầu nhận xe; IncidentService.handleAffectedBookings đủ nhánh thay tài nguyên mà PDF cho phép.
+Đủ 44/44 lớp mang tên UML.
+Đúng tên và đúng lớp 184/184 (100%), tăng từ 146/184. Có 159 tên phương thức duy nhất.
+Cả 184 phương thức có hành vi trong phạm vi MVP, gồm 182 dòng C và 2 dòng M.
+Kiểm thử Node xác minh trực tiếp 184 khai báo bằng cách nạp lớp JavaScript và so với bảng thiết kế. Xem tests/node/uml.test.mjs.
+52/52 ca Node đều qua, gồm 51 ca nghiệp vụ và 1 ca đối chiếu cấu trúc UML.
+8/8 nhóm kiểm thử giao diện Edge đều qua, gồm các luồng Sinh viên, Operator và hai tab cùng xác nhận một xe.
 
-CHƯA CÓ HÀNH VI CHÍNH
-- AuthService.authenticateVnuSso() — SPA xác thực bằng username/password từ dữ liệu mẫu. Không tiếp nhận hoặc xác thực token VNU-SSO.
-- AuthService.validateSession() — Store tìm user theo userId của tab. Không có token SSO và kiểm tra tính hợp lệ của token.
-- Trip.durationMinutes() — Có start và end. Không có phép tính hoặc trường hiển thị thời lượng của lượt thuê.
-- ChargingPort.markChargedFull() — Có hằng CHARGED_FULL trong status.js. Không có nhánh ghi trạng thái này hoặc kích hoạt theo mức pin.
-- Incident.cancel() — Có luồng cách ly và đóng sau nghiệm thu. Không có nhánh hủy hồ sơ sự cố.
-- WorkOrder.markInProgress() — Incident chuyển IN_REPAIR khi gửi phiếu. WorkOrder có SENT và DONE, không có trạng thái đang thực hiện riêng.
+38 PHƯƠNG THỨC VỪA ĐƯA VỀ ĐÚNG LỚP
+- Hub.reserveInboundSpaces (src/domain/entities.js:43)
+- AuthService.logout (src/infrastructure/store.js:93)
+- HubService.getHubVehicles (src/application/hubs.js:41)
+- HubService.filterHubs (src/application/hubs.js:14)
+- HubService.updateHubTelemetry (src/application/hubs.js:45)
+- MonitoringService.evaluateHubLoadStatus (src/application/monitoring.js:15)
+- MonitoringService.checkNetworkAnomalies (src/application/monitoring.js:19)
+- OperationalStore.getRealtimeNetworkStatus (src/infrastructure/store.js:173)
+- OperationalStore.readConfig (src/infrastructure/store.js:177)
+- OperationalStore.beginTransaction (src/infrastructure/store.js:217)
+- VehicleService.getVehicleSnapshot (src/application/vehicle.js:15)
+- VehicleService.unlockVehicle (src/application/vehicle.js:61)
+- VehicleService.verifyUnlock (src/application/vehicle.js:65)
+- VehicleService.lockVehicle (src/application/vehicle.js:70)
+- VehicleService.verifyLock (src/application/vehicle.js:74)
+- VehicleService.classifyReturnedVehicle (src/application/vehicle.js:79)
+- ReservationService.validatePickup (src/application/student.js:73)
+- ReservationService.consumeReservation (src/application/student.js:82)
+- ReservationService.reconcileVehicleHold (src/application/student.js:86)
+- ReservationService.getActiveReservation (src/application/student.js:68)
+- TripService.holdReturnPosition (src/application/student.js:270)
+- TripService.changeReturnPosition (src/application/student.js:284)
+- TripService.reconcilePendingTrip (src/application/student.js:338)
+- ParkingService.getHubs (src/application/student.js:366)
+- ParkingService.expireOverdueReservations (src/application/student.js:436)
+- ChargingScheduleService.getActiveBookings (src/application/student.js:511)
+- ChargingScheduleService.cancelScheduleByReservationExpiry (src/application/student.js:592)
+- ChargingSessionService.requestControl (src/application/charging.js:66)
+- DispatchService.completeDispatchOrder (src/application/operator.js:286)
+- TelemetryService.validatePacket (src/application/telemetry.js:132)
+- TelemetryService.evaluateAndAlert (src/application/telemetry.js:100)
+- IncidentService.requestControl (src/application/operator.js:516)
+- IncidentService.createWorkOrder (src/application/operator.js:561)
+- IncidentService.syncDashboard (src/application/operator.js:452)
+- Incident.deferIsolation (src/domain/entities.js:285)
+- SimulationService.getNetworkSnapshot (src/application/simulation.js:31)
+- SimulationService.saveSimulationResult (src/application/simulation.js:71)
+- RecommendationService.getRecommendations (src/application/operator.js:785)
 
-CÓ MỘT PHẦN HÀNH VI
-- ParkingSpace.markPendingCheck() — Chặn ô qua blocked và ghi tình trạng chờ trên hồ sơ sự cố. Không có chuyển ô sang PENDING_CHECK riêng.
-- ParkingSpace.markFaulted() — Chặn cấp phát và chuyển OUT_OF_SERVICE khi cách ly. Không có chuyển ô sang FAULTED riêng.
-- Reservation.isActive() — Kiểm tra thời hạn giữ trước khi bắt đầu nhận xe. Sau khi bắt đầu nhận hoặc đã mở khóa, thời hạn chuyển sang checkInDeadline và được kiểm tra ở TripService; phương thức isActive không bao quát hai trạng thái đó.
-- Reservation.cancel() — Đúng tên và lớp. Phương thức đổi trạng thái đơn sang CANCELLED; lý do hủy theo chữ ký UML chưa được lưu.
-- Trip.requestEnd() — Đúng tên và lớp. Ghi Hub và chốt trả; updatedAt dùng chung nên không giữ riêng thời điểm yêu cầu trả.
-- Trip.reportIssue() — Sinh viên chọn cần kiểm tra kỹ thuật. Mô tả sự cố mặc định nằm trong Incident, không có mô tả tự nhập trên Trip.
-- Trip.markPendingVerification() — Có trạng thái chờ, thời điểm khóa và mã bằng chứng. Không lưu riêng lý do trên Trip khi chuyển trạng thái.
-- ReservationService.cancelReservation() — Kiểm tra chủ đơn và đối soát khi hủy. Không thu hoặc lưu lý do khi sinh viên hủy thông thường.
-- ReservationService.expireReservation() — Đánh dấu hết hạn và đối soát xe. Không gửi thông báo hết hạn riêng cho sinh viên.
-- TripService.verifyParkingEvidence() — TripService.endTrip kiểm tra mã xe, mã chốt, chỗ đang giữ và phản hồi khóa giả lập. Gói cảm biến vào chốt độc lập chưa được đối chiếu.
-- TripService.reportTripIssue() — TripService.finalizeTrip nhận cờ sự cố và ghi Incident với nội dung mặc định. Màn trả xe chưa nhận mô tả tự nhập cho lượt thuê.
-- TripService.getTripSummary() — Lịch sử lọc theo chủ và hiện mã, xe, trạng thái. Không có tóm tắt chi tiết được truy xuất theo mã chuyến.
-- ParkingService.checkAvailability() — Có kiểm tra xung đột khung giờ trong giao dịch. Màn đặt chỉ hiện hiện trạng ô trước khi gửi, không xem trước theo khung giờ chọn.
-- ParkingService.reconcileSlot() — Có kiểm tra cảm biến và giữ trạng thái vật lý trong các nhánh liên quan. Chưa có đối soát đầy đủ trạng thái ô sau hủy hoặc hết hạn.
-- ChargingScheduleService.getChargers() — Màn lọc theo Hub và tính sẵn sàng. Tương thích đầu nối được kiểm tra khi xác nhận, chưa lọc ở danh sách cổng.
-- ChargingScheduleService.checkAvailability() — Có kiểm tra trùng lịch và công suất khi xác nhận. Chưa có phản hồi xem trước theo khung giờ trước khi gửi.
-- ChargingScheduleService.reconcilePort() — Có các kiểm tra ở đặt lịch, telemetry và rút cáp. Chưa có bước đối soát cổng riêng sau hủy lịch.
-- ChargingPort.markReserved() — Giữ quyền theo bản ghi lịch và kiểm tra giao nhau. Không chuyển cổng sang RESERVED.
-- ChargingPort.markPendingCheck() — Có chặn sử dụng và đưa hồ sơ sự cố vào PENDING_CHECK. Không chuyển cổng sang trạng thái riêng tương ứng.
-- ChargingPort.markFaulted() — Chặn hoặc chuyển OUT_OF_SERVICE theo xử lý sự cố. Không có chuyển cổng sang FAULTED riêng.
-- ChargingSessionService.updateSessionReading() — chargeReading tính kWh và chi phí từ công suất và thời gian. Dữ liệu đo pin, công suất và năng lượng chưa được nạp vào phiên qua API cập nhật số đo.
-- ChargingSessionService.handleControlFailure() — Có ghi lỗi lệnh và giữ trạng thái an toàn. Timeout được báo tại luồng hiện hành, chưa luôn chuyển qua hàng đợi Operator.
-- ChargingSessionService.handleElectricalFault() — Lỗi có thể tạo Incident và cập nhật faultCode. Phiên vẫn giữ trạng thái vật lý tới xác nhận ngắt, không có luồng chốt riêng phiên lỗi.
-- ChargingSession.updateReading() — Phương thức cập nhật được kWh và chi phí ước tính. Bộ số đo pin, công suất, năng lượng từ nguồn đo chưa được cập nhật đầy đủ vào phiên.
-- ChargingSession.markFaulted() — Lưu faultCode trên phiên khi ngắt thất bại. Không có chuyển phiên sang FAILED riêng.
-- TelemetryService.registerSensor() — Tự thêm bản ghi khi nhận gói từ thiết bị đã có. Không có thao tác đăng ký cảm biến độc lập.
-- TelemetryService.publishEvent() — Gọi trực tiếp cập nhật, thông báo hoặc tạo sự cố. Không có API phát sự kiện phân loại độc lập.
-- IncidentService.resendPendingWorkOrders() — Operator gửi lại từng phiếu cùng mã. Không có thao tác gửi hàng loạt hoặc tự gửi lại toàn hàng đợi.
-- SimulationService.getSavedScenario() — Đọc mẫu DRAFT theo templateId để chạy lại. Màn hình chỉ hiển thị kết quả gần nhất, không mở lại kết quả cũ theo mã.
-- SimulationService.runSimulation() — Có dự báo, điểm nghẽn và kết quả lưu trên snapshot. Vòng lặp cố định nên không có nhánh ghi FAILED vì timeout hoặc không hội tụ.
-- SimulationService.validateParams() — Kiểm tra các điều kiện và ném lỗi đầu tiên. Không trả danh sách lỗi.
-- RecommendationService.applyRecommendations() — Áp dụng đơn lẻ/nhóm, kiểm tra lại và có đường xử lý bù. Giao diện nhận thông báo tóm tắt thay vì danh sách kết quả lệnh, và xử lý bù sau phát lệnh cần thao tác Operator.
-- RecommendationService.rejectRecommendations() — Từ chối từng mục. UI dùng lý do mặc định, không có nhập lý do hoặc từ chối cả nhóm.
-- RecommendationService.revalidateActions() — Dùng kiểm tra trực tiếp của nghiệp vụ trên bản nháp. Dừng ở lỗi đầu tiên, không trả danh sách sai lệch.
-- RecommendationService.dispatchCommands() — Chuyển vào các luồng điều phối, sạc và thông báo, giữ ID lệnh/kế hoạch hoặc số người nhận. Không có danh sách CommandResult chung cho mọi hành động.
-- RecommendationService.compensateCommands() — Có hủy chờ, yêu cầu thu hồi, gửi thông báo thay thế, chuyển chờ đối soát. Là nhánh do Operator kích hoạt và không trả danh sách kết quả bù từng lệnh.
-- NotificationService.sendNotification() — Phương thức tạo một thông báo cho đối tượng hoặc vai trò. Luồng chuyển hướng lặp theo nhóm Sinh viên; API chung nhận danh sách người nhận và trả danh sách theo UML chưa có.
-- AuditLogService.saveAuditLog() — Có lưu actor, đích, thời gian và kết quả của nhiều thao tác. Ngoại lệ ném ra trước commit có thể không có dòng audit tương ứng.
+44 PHƯƠNG THỨC BỔ SUNG HÀNH VI Ở LẦN TRIỂN KHAI TRƯỚC
+- ParkingSpace.markPendingCheck() — Chặn cấp phát bằng inspectionStatus=PENDING_CHECK khi trạng thái cảm biến và hiện trạng ô cần đối soát. Giữ thông tin xe và vị trí vật lý.
+- ParkingSpace.markFaulted() — Khi Operator xác nhận cách ly, ghi inspectionStatus=FAULTED và ngừng cấp phát.
+- AuthService.authenticateVnuSso() — Xác thực định danh trong token mẫu sau bước kiểm tra tài khoản demo. Toàn bộ luồng chạy cục bộ.
+- AuthService.validateSession() — Đối chiếu token hoặc ID phiên cũ với tài khoản đang hoạt động trong tab. Phiên đã đăng xuất bị từ chối.
+- Reservation.isActive() — Kiểm tra hạn giữ trước khi nhận và checkInDeadline trong lúc nhận hoặc đã mở khóa. Bước bắt đầu nhận vẫn yêu cầu đơn đang giữ.
+- Reservation.cancel() — Lưu lý do hủy cùng trạng thái CANCELLED. Hủy nhanh có lý do mặc định.
+- Trip.requestEnd() — Lưu Hub, chốt và returnRequestedAt khi giữ hoặc đổi chốt trả.
+- Trip.reportIssue() — Lưu mô tả của Sinh viên trên Trip và chuyển mô tả sang hồ sơ sự cố.
+- Trip.markPendingVerification() — Lưu lý do chờ xác minh cùng mã xác nhận khóa và bằng chứng chốt.
+- Trip.durationMinutes() — Tính số phút từ lúc nhận đến lúc hoàn tất, hoặc đến thời điểm xét đối với chuyến đang chạy.
+- ReservationService.cancelReservation() — Kiểm tra chủ đơn và trạng thái, lưu lý do rồi đối soát xe được giữ.
+- ReservationService.expireReservation() — Hết hạn và đối soát xe trong cùng giao dịch. Mỗi đơn được thông báo hết hạn một lần.
+- TripService.verifyParkingEvidence() — Đối chiếu sự kiện cảm biến mô phỏng có mã riêng với chốt, xe, chuyến và trạng thái khóa. Bằng chứng cũ vẫn được đọc khi tải lại.
+- TripService.reportTripIssue() — Nhận mô tả trực tiếp từ form trả xe và ghi cùng chuyến lẫn hồ sơ sự cố.
+- TripService.getTripSummary() — Tra cứu theo mã và chủ chuyến. Màn lịch sử mở chi tiết thời lượng, Hub, thời điểm và mô tả sự cố.
+- ParkingService.checkAvailability() — Form xem trước dùng chung kiểm tra quyền sở hữu, phiên bản và trùng khung giờ với bước xác nhận. Xem trước chưa giữ chỗ hoặc trừ cọc.
+- ParkingService.reconcileSlot() — Sau hủy hoặc hết hạn, giữ hiện trạng xe. Mâu thuẫn cảm biến đưa ô sang diện đối soát.
+- ChargingScheduleService.getChargers() — Lọc cổng theo Hub, trạng thái sử dụng và đầu nối của xe.
+- ChargingScheduleService.checkAvailability() — Xem trước theo khung giờ kiểm tra đơn đỗ, đầu nối, lịch chồng và giới hạn công suất. Kiểm tra lại khi xác nhận.
+- ChargingScheduleService.reconcilePort() — Sau thay đổi lịch hoặc chạy kiểm tra hạn, cập nhật lịch giữ đang hiệu lực và đối soát tín hiệu relay, cáp. Cảm biến mất kết nối tạm thời có thể phục hồi.
+- ChargingPort.markReserved() — Ghi reservedScheduleId theo khung giờ đang hiệu lực. Trạng thái vật lý giữ nguyên để cho phép lịch khác ở khung giờ khác.
+- ChargingPort.markChargedFull() — Nhận mức pin 100% từ gói mô phỏng. Chuyển CHARGED_FULL sau xác nhận ngắt điện và giữ kết nối cáp cho đến khi người dùng rút.
+- ChargingPort.markPendingCheck() — Ghi inspectionStatus=PENDING_CHECK và chặn cấp phát khi tín hiệu hoặc kết quả điều khiển cần đối soát.
+- ChargingPort.markFaulted() — Ghi inspectionStatus=FAULTED sau khi cách ly an toàn. Giữ xếp loại vật lý tương thích với luồng hiện có.
+- ChargingSessionService.updateSessionReading() — Kiểm tra và lưu SoC, công suất đo và điện năng tích lũy từ telemetry mô phỏng. Từ chối mốc cũ và số đo không hợp lệ.
+- ChargingSessionService.handleControlFailure() — Giữ trạng thái an toàn khi lệnh sạc lỗi hoặc timeout, lưu mã lệnh và thông báo Operator đối soát.
+- ChargingSessionService.handleElectricalFault() — Ghi mã lỗi vào phiên, tạo Incident và thông báo người dùng. Phiên chỉ chốt FAILED khi đã ngắt điện và rút cáp.
+- ChargingSession.updateReading() — Cập nhật pin, công suất đo và điện năng từ gói mô phỏng. Khi thiếu số đo, màn demo tiếp tục dùng ước tính theo thời gian.
+- ChargingSession.markFaulted() — Lưu mã lỗi và cờ lỗi điện. Chốt trạng thái lỗi khi đã xử lý cáp an toàn.
+- TelemetryService.registerSensor() — Operator đăng ký cảm biến độc lập với việc phát gói. Đăng ký lại cùng mã chỉ dùng một bản ghi.
+- TelemetryService.publishEvent() — Phân loại gói đã nhận và chuyển tới cập nhật, theo dõi mất kết nối, giám sát hoặc xử lý sự cố trong giao dịch cục bộ.
+- IncidentService.resendPendingWorkOrders() — Gửi lại các phiếu đang chờ và giữ nguyên mã phiếu. Thao tác gửi lại từng phiếu vẫn dùng được.
+- Incident.cancel() — Hủy hồ sơ thủ công trước cách ly khi đã xử lý các đơn ảnh hưởng. Ghi lý do và giữ chặn do cảnh báo hệ thống.
+- WorkOrder.markInProgress() — Phiếu đã gửi có thao tác xác nhận đang sửa. Lưu thời điểm và hiện IN_PROGRESS trước khi nghiệm thu.
+- SimulationService.getSavedScenario() — Tra cứu cả mẫu và kết quả đã lưu theo mã. Operator có thể xem lại kết quả cũ.
+- SimulationService.runSimulation() — Mô hình hữu hạn của SPA ghi COMPLETED hoặc FAILED khi vượt thời hạn hay sinh giá trị không hữu hạn.
+- SimulationService.validateParams() — Trả danh sách lỗi đầu vào để người dùng sửa cùng lúc.
+- RecommendationService.applyRecommendations() — Kiểm tra toàn bộ lựa chọn trên bản nháp rồi mới commit. Trả kết quả kèm ID lệnh và tự xử lý bù với lỗi lệnh sạc liên quan sau commit.
+- RecommendationService.rejectRecommendations() — Hỗ trợ từ chối một hoặc nhiều mục kèm lý do, người thao tác và thời điểm.
+- RecommendationService.revalidateActions() — Thu thập lỗi của từng mục trên bản nháp. Cả nhóm giữ nguyên khi có lỗi trước phát lệnh.
+- RecommendationService.dispatchCommands() — Trả kết quả có mã lệnh điều phối, lệnh sạc hoặc thông báo. Màn duyệt đọc trạng thái hiện thời sau commit.
+- RecommendationService.compensateCommands() — Trả kết quả bù, hủy lệnh còn chờ và chuyển trường hợp chưa chắc chắn sang đối soát. Giữ thao tác bù thủ công đã có.
+- NotificationService.sendNotification() — Nhận danh sách ID người nhận, lọc ID hợp lệ, loại trùng và trả danh sách thông báo đã tạo.
+- AuditLogService.saveAuditLog() — Ghi thành công hoặc lỗi. Lỗi nghiệp vụ được ghi bằng giao dịch riêng sau rollback khi localStorage còn ghi được.
 
 ĐỐI CHIẾU TỪNG PHƯƠNG THỨC
 
-3.1 Tra cứu Hub, xác thực và giám sát mạng lưới (UC01, UC08) — 32 phương thức · 18 đúng lớp · 28 C · 2 P · 2 N
+3.1 Tra cứu Hub, xác thực và giám sát mạng lưới (UC01, UC08) — 32 phương thức · 32 đúng lớp · 30 C · 2 M
 
 User — src/domain/entities.js:4 — 3/3 phương thức đúng lớp
   [C | Đúng lớp] +getUserId(): String
@@ -84,9 +116,9 @@ User — src/domain/entities.js:4 — 3/3 phương thức đúng lớp
   [C | Đúng lớp] +hasPermission(permission: String): boolean
     JS — User.hasPermission (src/domain/entities.js:9)
 
-Hub — src/domain/entities.js:12 — 5/6 phương thức đúng lớp
-  [C | Ánh xạ] +reserveInboundSpaces(count: int): void
-    JS — DispatchService.processDispatchOrder (src/application/operator.js:82); ParkingSpace.markReserved (src/domain/entities.js:52)
+Hub — src/domain/entities.js:12 — 6/6 phương thức đúng lớp
+  [C | Đúng lớp] +reserveInboundSpaces(count: int): void
+    JS — Hub.reserveInboundSpaces (src/domain/entities.js:43); DispatchService.processDispatchOrder (src/application/operator.js:97); ParkingSpace.markReserved (src/domain/entities.js:59)
   [C | Đúng lớp] +calculateLoadLevel(fullRatio: double, lowAvailRatio: double): HubLoadLevel
     JS — Hub.calculateLoadLevel (src/domain/entities.js:24)
   [C | Đúng lớp] +isOffline(telemetryTimeoutSeconds: int, currentTime: long): boolean
@@ -98,501 +130,501 @@ Hub — src/domain/entities.js:12 — 5/6 phương thức đúng lớp
   [C | Đúng lớp] +updateTelemetryHeartbeat(timestamp: long): void
     JS — Hub.updateTelemetryHeartbeat (src/domain/entities.js:20)
 
-ParkingSpace — src/domain/entities.js:44 — 5/7 phương thức đúng lớp
+ParkingSpace — src/domain/entities.js:51 — 7/7 phương thức đúng lớp
   [C | Đúng lớp] +canReleaseToAvailable(): boolean
-    JS — ParkingSpace.canReleaseToAvailable (src/domain/entities.js:47)
+    JS — ParkingSpace.canReleaseToAvailable (src/domain/entities.js:54)
   [C | Đúng lớp] +updateSensorStatus(occupied: boolean, timestamp: long): void
-    JS — ParkingSpace.updateSensorStatus (src/domain/entities.js:68)
+    JS — ParkingSpace.updateSensorStatus (src/domain/entities.js:75)
   [C | Đúng lớp] +markReserved(): void
-    JS — ParkingSpace.markReserved (src/domain/entities.js:52)
+    JS — ParkingSpace.markReserved (src/domain/entities.js:59)
   [C | Đúng lớp] +markOccupied(): void
-    JS — ParkingSpace.markOccupied (src/domain/entities.js:57)
+    JS — ParkingSpace.markOccupied (src/domain/entities.js:64)
   [C | Đúng lớp] +markAvailable(): void
-    JS — ParkingSpace.markAvailable (src/domain/entities.js:61)
-  [P | Ánh xạ] +markPendingCheck(): void
-    JS — IncidentService.isolateResource (src/application/operator.js:480); Incident.markPendingCheck (src/domain/entities.js:244)
-    Chặn ô qua blocked và ghi tình trạng chờ trên hồ sơ sự cố. Không có chuyển ô sang PENDING_CHECK riêng.
-  [P | Ánh xạ] +markFaulted(): void
-    JS — IncidentService.isolateResource (src/application/operator.js:480)
-    Chặn cấp phát và chuyển OUT_OF_SERVICE khi cách ly. Không có chuyển ô sang FAULTED riêng.
+    JS — ParkingSpace.markAvailable (src/domain/entities.js:68)
+  [C | Đúng lớp] +markPendingCheck(): void
+    JS — ParkingSpace.markPendingCheck (src/domain/entities.js:79); ParkingService.reconcileSlot (src/application/student.js:443); IncidentService.isolateResource (src/application/operator.js:520)
+    Chặn cấp phát bằng inspectionStatus=PENDING_CHECK khi trạng thái cảm biến và hiện trạng ô cần đối soát. Giữ thông tin xe và vị trí vật lý.
+  [C | Đúng lớp] +markFaulted(): void
+    JS — ParkingSpace.markFaulted (src/domain/entities.js:80); IncidentService.isolateResource (src/application/operator.js:520)
+    Khi Operator xác nhận cách ly, ghi inspectionStatus=FAULTED và ngừng cấp phát.
 
-AuthService — src/infrastructure/store.js:64 — 0/3 phương thức đúng lớp
-  [N | Thiếu] +authenticateVnuSso(ssoToken: String): User
-    Mã liên quan — AuthService.authenticate (src/infrastructure/store.js:65)
-    SPA xác thực bằng username/password từ dữ liệu mẫu. Không tiếp nhận hoặc xác thực token VNU-SSO.
-  [N | Thiếu] +validateSession(token: String): boolean
-    Mã liên quan — OperationalStore.user (src/infrastructure/store.js:153)
-    Store tìm user theo userId của tab. Không có token SSO và kiểm tra tính hợp lệ của token.
-  [C | Ánh xạ] +logout(token: String): void
-    JS — OperationalStore.logout (src/infrastructure/store.js:235); endSession (src/app.js:227)
+AuthService — src/infrastructure/store.js:65 — 3/3 phương thức đúng lớp
+  [M | Đúng lớp] +authenticateVnuSso(ssoToken: String): User
+    JS — static AuthService.authenticateVnuSso (src/infrastructure/store.js:79); OperationalStore.login (src/infrastructure/store.js:260)
+    Xác thực định danh trong token mẫu sau bước kiểm tra tài khoản demo. Toàn bộ luồng chạy cục bộ.
+  [M | Đúng lớp] +validateSession(token: String): boolean
+    JS — static AuthService.validateSession (src/infrastructure/store.js:87); OperationalStore.user (src/infrastructure/store.js:183)
+    Đối chiếu token hoặc ID phiên cũ với tài khoản đang hoạt động trong tab. Phiên đã đăng xuất bị từ chối.
+  [C | Đúng lớp] +logout(token: String): void
+    JS — static AuthService.logout (src/infrastructure/store.js:93); OperationalStore.logout (src/infrastructure/store.js:271); endSession (src/app.js:229)
 
-HubService — src/application/student.js:37 — 2/5 phương thức đúng lớp
+HubService — src/application/hubs.js:4 — 5/5 phương thức đúng lớp
   [C | Đúng lớp] +getNearbyHubs(lat: double, lon: double, radiusKm: double): List<Hub>
-    JS — static HubService.getNearbyHubs (src/application/student.js:65)
+    JS — static HubService.getNearbyHubs (src/application/hubs.js:52)
   [C | Đúng lớp] +getHubDetail(hubId: String): Hub
-    JS — static HubService.getHubDetail (src/application/student.js:61)
-  [C | Ánh xạ] +getHubVehicles(hubId: String, filterCriteria: FilterCriteria): List<Vehicle>
-    JS — VehicleService.findAvailableVehicles (src/application/student.js:168)
-  [C | Ánh xạ] +filterHubs(zone: String, minAvailableVehicles: int, minBatteryFilter: double): List<Hub>
-    JS — HubService.searchHubs (src/application/student.js:38)
-  [C | Ánh xạ] +updateHubTelemetry(hubId: String, currentPowerKw: double, timestamp: long): boolean
-    JS — TelemetryService.updateState (src/application/telemetry.js:37)
+    JS — static HubService.getHubDetail (src/application/hubs.js:37)
+  [C | Đúng lớp] +getHubVehicles(hubId: String, filterCriteria: FilterCriteria): List<Vehicle>
+    JS — static HubService.getHubVehicles (src/application/hubs.js:41); VehicleService.findAvailableVehicles (src/application/vehicle.js:8)
+  [C | Đúng lớp] +filterHubs(zone: String, minAvailableVehicles: int, minBatteryFilter: double): List<Hub>
+    JS — static HubService.filterHubs (src/application/hubs.js:14); HubService.searchHubs (src/application/hubs.js:5)
+  [C | Đúng lớp] +updateHubTelemetry(hubId: String, currentPowerKw: double, timestamp: long): boolean
+    JS — static HubService.updateHubTelemetry (src/application/hubs.js:45); TelemetryService.updateState (src/application/telemetry.js:69)
 
-MonitoringService — src/application/monitoring.js:10 — 3/5 phương thức đúng lớp
+MonitoringService — src/application/monitoring.js:10 — 5/5 phương thức đúng lớp
   [C | Đúng lớp] +getNetworkOverviewSnapshot(): Map<String, Object>
     JS — static MonitoringService.getNetworkOverviewSnapshot (src/application/monitoring.js:11)
-  [C | Ánh xạ] +evaluateHubLoadStatus(hubId: String): HubLoadLevel
-    JS — Hub.calculateLoadLevel (src/domain/entities.js:24); hubMetrics (src/domain/resources.js:28)
-  [C | Ánh xạ] +checkNetworkAnomalies(currentTime: long): List<String>
-    JS — networkSnapshot (src/domain/resources.js:68); TelemetryService.checkTimeouts (src/application/telemetry.js:133)
+  [C | Đúng lớp] +evaluateHubLoadStatus(hubId: String): HubLoadLevel
+    JS — static MonitoringService.evaluateHubLoadStatus (src/application/monitoring.js:15); Hub.calculateLoadLevel (src/domain/entities.js:24); hubMetrics (src/domain/resources.js:28)
+  [C | Đúng lớp] +checkNetworkAnomalies(currentTime: long): List<String>
+    JS — static MonitoringService.checkNetworkAnomalies (src/application/monitoring.js:19); networkSnapshot (src/domain/resources.js:73); TelemetryService.checkTimeouts (src/application/telemetry.js:184)
   [C | Đúng lớp] +exportNetworkReport(format: String): byte[]
-    JS — static MonitoringService.exportNetworkReport (src/application/monitoring.js:15)
+    JS — static MonitoringService.exportNetworkReport (src/application/monitoring.js:23)
   [C | Đúng lớp] +triggerRebalanceAlertIfNeeded(hubId: String): boolean
-    JS — static MonitoringService.triggerRebalanceAlertIfNeeded (src/application/monitoring.js:22)
+    JS — static MonitoringService.triggerRebalanceAlertIfNeeded (src/application/monitoring.js:30)
 
-OperationalStore — src/infrastructure/store.js:79 — 0/3 phương thức đúng lớp
-  [C | Ánh xạ] +getRealtimeNetworkStatus(): NetworkSnapshot
-    JS — OperationalStore.state (src/infrastructure/store.js:150); MonitoringService.getNetworkOverviewSnapshot (src/application/monitoring.js:11)
-  [C | Ánh xạ] +readConfig(key: String, hubId: String): ConfigValue
-    JS — hubMetrics (src/domain/resources.js:28); OperationalStore.state (src/infrastructure/store.js:150)
-  [C | Ánh xạ] +beginTransaction(): Transaction
-    JS — OperationalStore.transaction (src/infrastructure/store.js:182)
+OperationalStore — src/infrastructure/store.js:98 — 3/3 phương thức đúng lớp
+  [C | Đúng lớp] +getRealtimeNetworkStatus(): NetworkSnapshot
+    JS — OperationalStore.getRealtimeNetworkStatus (src/infrastructure/store.js:173); OperationalStore.state (src/infrastructure/store.js:169); MonitoringService.getNetworkOverviewSnapshot (src/application/monitoring.js:11)
+  [C | Đúng lớp] +readConfig(key: String, hubId: String): ConfigValue
+    JS — OperationalStore.readConfig (src/infrastructure/store.js:177); hubMetrics (src/domain/resources.js:28); OperationalStore.state (src/infrastructure/store.js:169)
+  [C | Đúng lớp] +beginTransaction(): Transaction
+    JS — OperationalStore.beginTransaction (src/infrastructure/store.js:217); OperationalStore.transaction (src/infrastructure/store.js:213)
 
-3.2 Đặt, nhận và trả xe dùng chung (UC02–UC04) — 49 phương thức · 29 đúng lớp · 38 C · 10 P · 1 N
+3.2 Đặt, nhận và trả xe dùng chung (UC02–UC04) — 49 phương thức · 49 đúng lớp · 49 C · 0 M
 
-Vehicle — src/domain/entities.js:73 — 0/0 phương thức đúng lớp
+Vehicle — src/domain/entities.js:83 — 0/0 phương thức đúng lớp
   UML chỉ khai báo thuộc tính.
 
-SharedVehicle — src/domain/entities.js:79 — 4/4 phương thức đúng lớp
+SharedVehicle — src/domain/entities.js:89 — 4/4 phương thức đúng lớp
   [C | Đúng lớp] +reserve(reservationId: String): void
-    JS — SharedVehicle.reserve (src/domain/entities.js:80)
+    JS — SharedVehicle.reserve (src/domain/entities.js:90)
   [C | Đúng lớp] +markInUse(tripId: String): void
-    JS — SharedVehicle.markInUse (src/domain/entities.js:84)
+    JS — SharedVehicle.markInUse (src/domain/entities.js:94)
   [C | Đúng lớp] +markRelocating(): void
-    JS — SharedVehicle.markRelocating (src/domain/entities.js:88)
+    JS — SharedVehicle.markRelocating (src/domain/entities.js:98)
   [C | Đúng lớp] +classifyAfterReturn(hasIssue: boolean, latestSoc: OptionalInt): void
-    JS — SharedVehicle.classifyAfterReturn (src/domain/entities.js:93)
+    JS — SharedVehicle.classifyAfterReturn (src/domain/entities.js:103)
 
-PrivateVehicle — src/domain/entities.js:100 — 1/1 phương thức đúng lớp
+PrivateVehicle — src/domain/entities.js:110 — 1/1 phương thức đúng lớp
   [C | Đúng lớp] +boolean belongsTo(String studentId)
-    JS — PrivateVehicle.belongsTo (src/domain/entities.js:101)
+    JS — PrivateVehicle.belongsTo (src/domain/entities.js:111)
 
-Reservation — src/domain/entities.js:104 — 7/7 phương thức đúng lớp
-  [P | Đúng lớp] +boolean isActive(DateTime at)
-    JS — Reservation.isActive (src/domain/entities.js:107); TripService.checkedInPickup (src/application/student.js:237); TripService.startTrip (src/application/student.js:278)
-    Kiểm tra thời hạn giữ trước khi bắt đầu nhận xe. Sau khi bắt đầu nhận hoặc đã mở khóa, thời hạn chuyển sang checkInDeadline và được kiểm tra ở TripService; phương thức isActive không bao quát hai trạng thái đó.
+Reservation — src/domain/entities.js:114 — 7/7 phương thức đúng lớp
+  [C | Đúng lớp] +boolean isActive(DateTime at)
+    JS — Reservation.isActive (src/domain/entities.js:117); TripService.requestPickup (src/application/student.js:148); TripService.checkedInPickup (src/application/student.js:160)
+    Kiểm tra hạn giữ trước khi nhận và checkInDeadline trong lúc nhận hoặc đã mở khóa. Bước bắt đầu nhận vẫn yêu cầu đơn đang giữ.
   [C | Đúng lớp] +boolean belongsTo(String studentId)
-    JS — Reservation.belongsTo (src/domain/entities.js:108)
+    JS — Reservation.belongsTo (src/domain/entities.js:121)
   [C | Đúng lớp] +boolean matches(String vehicleId, String pickupHubId)
-    JS — Reservation.matches (src/domain/entities.js:109)
+    JS — Reservation.matches (src/domain/entities.js:122)
   [C | Đúng lớp] +void confirm()
-    JS — Reservation.confirm (src/domain/entities.js:111)
-  [P | Đúng lớp] +void cancel(String reason)
-    JS — Reservation.cancel (src/domain/entities.js:112)
-    Đúng tên và lớp. Phương thức đổi trạng thái đơn sang CANCELLED; lý do hủy theo chữ ký UML chưa được lưu.
+    JS — Reservation.confirm (src/domain/entities.js:124)
+  [C | Đúng lớp] +void cancel(String reason)
+    JS — Reservation.cancel (src/domain/entities.js:125); ReservationService.cancelReservation (src/application/student.js:127)
+    Lưu lý do hủy cùng trạng thái CANCELLED. Hủy nhanh có lý do mặc định.
   [C | Đúng lớp] +void expire()
-    JS — Reservation.expire (src/domain/entities.js:113)
+    JS — Reservation.expire (src/domain/entities.js:126)
   [C | Đúng lớp] +void consume(String tripId)
-    JS — Reservation.consume (src/domain/entities.js:114)
+    JS — Reservation.consume (src/domain/entities.js:127)
 
-Trip — src/domain/entities.js:117 — 5/8 phương thức đúng lớp
+Trip — src/domain/entities.js:130 — 8/8 phương thức đúng lớp
   [C | Đúng lớp] +void start(DateTime at)
-    JS — static Trip.start (src/domain/entities.js:120)
+    JS — static Trip.start (src/domain/entities.js:133)
     Phương thức tĩnh tạo Trip. Trường start vẫn lưu mốc giờ theo schema JSON.
-  [P | Đúng lớp] +void requestEnd(String returnHubId, String returnPositionId, DateTime at)
-    JS — Trip.requestEnd (src/domain/entities.js:126)
-    Đúng tên và lớp. Ghi Hub và chốt trả; updatedAt dùng chung nên không giữ riêng thời điểm yêu cầu trả.
+  [C | Đúng lớp] +void requestEnd(String returnHubId, String returnPositionId, DateTime at)
+    JS — Trip.requestEnd (src/domain/entities.js:139)
+    Lưu Hub, chốt và returnRequestedAt khi giữ hoặc đổi chốt trả.
   [C | Đúng lớp] +void attachParkingEvidence(String evidenceId)
-    JS — Trip.attachParkingEvidence (src/domain/entities.js:130)
-  [P | Ánh xạ] +void reportIssue(String description)
-    JS — TripService.finalizeTrip (src/application/student.js:377); recordIncident (src/domain/incidents.js:28)
-    Sinh viên chọn cần kiểm tra kỹ thuật. Mô tả sự cố mặc định nằm trong Incident, không có mô tả tự nhập trên Trip.
-  [P | Ánh xạ] +void markPendingVerification(String reason)
-    JS — Trip.attachParkingEvidence (src/domain/entities.js:130); TripService.endTrip (src/application/student.js:357)
-    Có trạng thái chờ, thời điểm khóa và mã bằng chứng. Không lưu riêng lý do trên Trip khi chuyển trạng thái.
+    JS — Trip.attachParkingEvidence (src/domain/entities.js:143)
+  [C | Đúng lớp] +void reportIssue(String description)
+    JS — Trip.reportIssue (src/domain/entities.js:151); TripService.reportTripIssue (src/application/student.js:328)
+    Lưu mô tả của Sinh viên trên Trip và chuyển mô tả sang hồ sơ sự cố.
+  [C | Đúng lớp] +void markPendingVerification(String reason)
+    JS — Trip.markPendingVerification (src/domain/entities.js:147)
+    Lưu lý do chờ xác minh cùng mã xác nhận khóa và bằng chứng chốt.
   [C | Đúng lớp] +void confirmEnded(DateTime at)
-    JS — Trip.confirmEnded (src/domain/entities.js:134)
+    JS — Trip.confirmEnded (src/domain/entities.js:157)
   [C | Đúng lớp] +boolean isActive()
-    JS — Trip.isActive (src/domain/entities.js:124)
-  [N | Thiếu] +long durationMinutes(DateTime at)
-    Mã liên quan — Trip.start (src/domain/entities.js:120); Trip.confirmEnded (src/domain/entities.js:134); tripView (src/pages/student/pickup-return.js:187)
-    Có start và end. Không có phép tính hoặc trường hiển thị thời lượng của lượt thuê.
+    JS — Trip.isActive (src/domain/entities.js:137)
+  [C | Đúng lớp] +long durationMinutes(DateTime at)
+    JS — Trip.durationMinutes (src/domain/entities.js:153); TripService.getTripSummary (src/application/student.js:333); completedTripDetails (src/pages/student/pickup-return.js:245)
+    Tính số phút từ lúc nhận đến lúc hoàn tất, hoặc đến thời điểm xét đối với chuyến đang chạy.
 
-VehicleService — src/application/student.js:167 — 3/9 phương thức đúng lớp
+VehicleService — src/application/vehicle.js:7 — 9/9 phương thức đúng lớp
   [C | Đúng lớp] +List<SharedVehicle> findAvailableVehicles(String hubId, int minBattery)
-    JS — static VehicleService.findAvailableVehicles (src/application/student.js:168)
-  [C | Ánh xạ] +SharedVehicle getVehicleSnapshot(String vehicleId)
-    JS — getRow (src/domain/student-rules.js:14); VehicleService.validateVehicleAtHub (src/application/student.js:175)
+    JS — static VehicleService.findAvailableVehicles (src/application/vehicle.js:8)
+  [C | Đúng lớp] +SharedVehicle getVehicleSnapshot(String vehicleId)
+    JS — static VehicleService.getVehicleSnapshot (src/application/vehicle.js:15); getRow (src/domain/student-rules.js:14); VehicleService.validateVehicleAtHub (src/application/vehicle.js:19)
   [C | Đúng lớp] +void validateVehicleAtHub(String vehicleId, String hubId)
-    JS — static VehicleService.validateVehicleAtHub (src/application/student.js:175)
+    JS — static VehicleService.validateVehicleAtHub (src/application/vehicle.js:19)
   [C | Đúng lớp] +void stopChargingSafely(String vehicleId)
-    JS — static VehicleService.stopChargingSafely (src/application/student.js:206)
-  [C | Ánh xạ] +void unlockVehicle(String vehicleId, String commandId)
-    JS — TripService.unlockAck (src/application/student.js:262); deviceResult (src/application/device-control.js:6)
-  [C | Ánh xạ] +boolean verifyUnlock(String vehicleId, int timeoutSeconds)
-    JS — TripService.unlockAck (src/application/student.js:262); TripService.startTrip (src/application/student.js:278)
-  [C | Ánh xạ] +void lockVehicle(String vehicleId, String commandId)
-    JS — TripService.endTrip (src/application/student.js:357); deviceResult (src/application/device-control.js:6)
-  [C | Ánh xạ] +boolean verifyLock(String vehicleId, int timeoutSeconds)
-    JS — TripService.endTrip (src/application/student.js:357); TripService.finalizeTrip (src/application/student.js:377)
-  [C | Ánh xạ] +void classifyReturnedVehicle(String vehicleId, boolean issueReported)
-    JS — TripService.finalizeTrip (src/application/student.js:377); SharedVehicle.classifyAfterReturn (src/domain/entities.js:93)
+    JS — static VehicleService.stopChargingSafely (src/application/vehicle.js:50)
+  [C | Đúng lớp] +void unlockVehicle(String vehicleId, String commandId)
+    JS — static VehicleService.unlockVehicle (src/application/vehicle.js:61); TripService.unlockAck (src/application/student.js:185); deviceResult (src/application/device-control.js:6)
+  [C | Đúng lớp] +boolean verifyUnlock(String vehicleId, int timeoutSeconds)
+    JS — static VehicleService.verifyUnlock (src/application/vehicle.js:65); TripService.unlockAck (src/application/student.js:185); TripService.startTrip (src/application/student.js:201)
+  [C | Đúng lớp] +void lockVehicle(String vehicleId, String commandId)
+    JS — static VehicleService.lockVehicle (src/application/vehicle.js:70); TripService.endTrip (src/application/student.js:292); deviceResult (src/application/device-control.js:6)
+  [C | Đúng lớp] +boolean verifyLock(String vehicleId, int timeoutSeconds)
+    JS — static VehicleService.verifyLock (src/application/vehicle.js:74); TripService.endTrip (src/application/student.js:292); TripService.finalizeTrip (src/application/student.js:349)
+  [C | Đúng lớp] +void classifyReturnedVehicle(String vehicleId, boolean issueReported)
+    JS — static VehicleService.classifyReturnedVehicle (src/application/vehicle.js:79); TripService.finalizeTrip (src/application/student.js:349); SharedVehicle.classifyAfterReturn (src/domain/entities.js:103)
 
-ReservationService — src/application/student.js:83 — 3/8 phương thức đúng lớp
+ReservationService — src/application/student.js:41 — 8/8 phương thức đúng lớp
   [C | Đúng lớp] +BookingPreview validateBooking(String studentId, String vehicleId, String hubId)
-    JS — static ReservationService.validateBooking (src/application/student.js:119)
+    JS — static ReservationService.validateBooking (src/application/student.js:90)
   [C | Đúng lớp] +Reservation confirmReservation(String studentId, String vehicleId, String hubId, long expectedVersion)
-    JS — static ReservationService.confirmReservation (src/application/student.js:133)
-  [C | Ánh xạ] +Reservation validatePickup(String reservationId, String studentId, String vehicleId, String hubId, DateTime at)
-    JS — TripService.requestPickup (src/application/student.js:219); VehicleService.validateVehicleAtHub (src/application/student.js:175)
-  [P | Đúng lớp] +void cancelReservation(String reservationId, String studentId, String reason)
-    JS — static ReservationService.cancelReservation (src/application/student.js:157)
-    Kiểm tra chủ đơn và đối soát khi hủy. Không thu hoặc lưu lý do khi sinh viên hủy thông thường.
-  [P | Ánh xạ] +void expireReservation(String reservationId, DateTime at)
-    JS — expireStudentHolds (src/application/student.js:603); ReservationService.closeVehicleBooking (src/application/student.js:151)
-    Đánh dấu hết hạn và đối soát xe. Không gửi thông báo hết hạn riêng cho sinh viên.
-  [C | Ánh xạ] +void consumeReservation(String reservationId, String tripId)
-    JS — TripService.startTrip (src/application/student.js:278); Reservation.consume (src/domain/entities.js:114)
-  [C | Ánh xạ] +void reconcileVehicleHold(String reservationId)
-    JS — releaseVehicleHold (src/domain/student-rules.js:70); ReservationService.closeVehicleBooking (src/application/student.js:151)
-  [C | Ánh xạ] +Reservation getActiveReservation(String studentId)
-    JS — ReservationService.validateVehicleBooking (src/application/student.js:90); tripView (src/pages/student/pickup-return.js:187)
+    JS — static ReservationService.confirmReservation (src/application/student.js:104)
+  [C | Đúng lớp] +Reservation validatePickup(String reservationId, String studentId, String vehicleId, String hubId, DateTime at)
+    JS — static ReservationService.validatePickup (src/application/student.js:73); TripService.requestPickup (src/application/student.js:148); VehicleService.validateVehicleAtHub (src/application/vehicle.js:19)
+  [C | Đúng lớp] +void cancelReservation(String reservationId, String studentId, String reason)
+    JS — static ReservationService.cancelReservation (src/application/student.js:127)
+    Kiểm tra chủ đơn và trạng thái, lưu lý do rồi đối soát xe được giữ.
+  [C | Đúng lớp] +void expireReservation(String reservationId, DateTime at)
+    JS — static ReservationService.expireReservation (src/application/student.js:137)
+    Hết hạn và đối soát xe trong cùng giao dịch. Mỗi đơn được thông báo hết hạn một lần.
+  [C | Đúng lớp] +void consumeReservation(String reservationId, String tripId)
+    JS — static ReservationService.consumeReservation (src/application/student.js:82); TripService.startTrip (src/application/student.js:201); Reservation.consume (src/domain/entities.js:127)
+  [C | Đúng lớp] +void reconcileVehicleHold(String reservationId)
+    JS — static ReservationService.reconcileVehicleHold (src/application/student.js:86); releaseVehicleHold (src/domain/student-rules.js:70); ReservationService.closeVehicleBooking (src/application/student.js:122)
+  [C | Đúng lớp] +Reservation getActiveReservation(String studentId)
+    JS — static ReservationService.getActiveReservation (src/application/student.js:68); ReservationService.validateVehicleBooking (src/application/student.js:48); tripView (src/pages/student/pickup-return.js:194)
 
-TripService — src/application/student.js:218 — 5/11 phương thức đúng lớp
+TripService — src/application/student.js:147 — 11/11 phương thức đúng lớp
   [C | Đúng lớp] +void requestPickup(String reservationId, String vehicleCode, String commandId)
-    JS — static TripService.requestPickup (src/application/student.js:219)
+    JS — static TripService.requestPickup (src/application/student.js:148)
   [C | Đúng lớp] +Trip startTrip(String reservationId, String studentId, String vehicleCode, String commandId)
-    JS — static TripService.startTrip (src/application/student.js:278)
+    JS — static TripService.startTrip (src/application/student.js:201)
   [C | Đúng lớp] +void requestReturnHub(String tripId, String hubId)
-    JS — static TripService.requestReturnHub (src/application/student.js:332)
-  [C | Ánh xạ] +String holdReturnPosition(String tripId, String hubId)
-    JS — TripService.requestReturnHub (src/application/student.js:332); ParkingSpace.markReserved (src/domain/entities.js:52)
-  [C | Ánh xạ] +void changeReturnPosition(String tripId, String positionId)
-    JS — TripService.requestReturnHub (src/application/student.js:332)
-  [P | Ánh xạ] +boolean verifyParkingEvidence(String tripId)
-    JS — TripService.endTrip (src/application/student.js:357); TripService.finalizeTrip (src/application/student.js:377)
-    TripService.endTrip kiểm tra mã xe, mã chốt, chỗ đang giữ và phản hồi khóa giả lập. Gói cảm biến vào chốt độc lập chưa được đối chiếu.
-  [P | Ánh xạ] +void reportTripIssue(String tripId, String description)
-    JS — TripService.finalizeTrip (src/application/student.js:377); recordIncident (src/domain/incidents.js:28)
-    TripService.finalizeTrip nhận cờ sự cố và ghi Incident với nội dung mặc định. Màn trả xe chưa nhận mô tả tự nhập cho lượt thuê.
+    JS — static TripService.requestReturnHub (src/application/student.js:255)
+  [C | Đúng lớp] +String holdReturnPosition(String tripId, String hubId)
+    JS — static TripService.holdReturnPosition (src/application/student.js:270); TripService.requestReturnHub (src/application/student.js:255); ParkingSpace.markReserved (src/domain/entities.js:59)
+  [C | Đúng lớp] +void changeReturnPosition(String tripId, String positionId)
+    JS — static TripService.changeReturnPosition (src/application/student.js:284); TripService.requestReturnHub (src/application/student.js:255)
+  [C | Đúng lớp] +boolean verifyParkingEvidence(String tripId)
+    JS — static TripService.verifyParkingEvidence (src/application/student.js:316); TelemetryService.recordParkingEvidence (src/application/telemetry.js:59); TripService.finalizeTrip (src/application/student.js:349)
+    Đối chiếu sự kiện cảm biến mô phỏng có mã riêng với chốt, xe, chuyến và trạng thái khóa. Bằng chứng cũ vẫn được đọc khi tải lại.
+  [C | Đúng lớp] +void reportTripIssue(String tripId, String description)
+    JS — static TripService.reportTripIssue (src/application/student.js:328)
+    Nhận mô tả trực tiếp từ form trả xe và ghi cùng chuyến lẫn hồ sơ sự cố.
   [C | Đúng lớp] +Trip endTrip(String tripId, String commandId)
-    JS — static TripService.endTrip (src/application/student.js:357)
+    JS — static TripService.endTrip (src/application/student.js:292)
   [C | Đúng lớp] +void finalizeTrip(String tripId, DateTime endedAt)
-    JS — static TripService.finalizeTrip (src/application/student.js:377)
-  [C | Ánh xạ] +Trip reconcilePendingTrip(String tripId)
-    JS — TripService.finalizeTrip (src/application/student.js:377)
-  [P | Ánh xạ] +Trip getTripSummary(String tripId, String studentId)
-    JS — tripView (src/pages/student/pickup-return.js:187)
-    Lịch sử lọc theo chủ và hiện mã, xe, trạng thái. Không có tóm tắt chi tiết được truy xuất theo mã chuyến.
+    JS — static TripService.finalizeTrip (src/application/student.js:349)
+  [C | Đúng lớp] +Trip reconcilePendingTrip(String tripId)
+    JS — static TripService.reconcilePendingTrip (src/application/student.js:338); TripService.finalizeTrip (src/application/student.js:349)
+  [C | Đúng lớp] +Trip getTripSummary(String tripId, String studentId)
+    JS — static TripService.getTripSummary (src/application/student.js:333); completedTripDetails (src/pages/student/pickup-return.js:245)
+    Tra cứu theo mã và chủ chuyến. Màn lịch sử mở chi tiết thời lượng, Hub, thời điểm và mô tả sự cố.
 
 DeviceControlGateway — src/infrastructure/device.js:6 — 1/1 phương thức đúng lớp
   [C | Đúng lớp] +requestControl(commandId: String, targetId: String, command: ControlCommand): ControlStatus
     JS — static DeviceControlGateway.requestControl (src/infrastructure/device.js:7)
     Trả thành công, lỗi hoặc timeout giả lập theo cấu hình MVP.
 
-3.3 Đặt ô đỗ và sạc xe cá nhân (UC05–UC07) — 41 phương thức · 24 đúng lớp · 27 C · 13 P · 1 N
+3.3 Đặt ô đỗ và sạc xe cá nhân (UC05–UC07) — 41 phương thức · 41 đúng lớp · 41 C · 0 M
 
-ParkingService — src/application/student.js:405 — 4/8 phương thức đúng lớp
+ParkingService — src/application/student.js:361 — 8/8 phương thức đúng lớp
   [C | Đúng lớp] +getVehicles(studentId: String): List<PrivateVehicle>
-    JS — static ParkingService.getVehicles (src/application/student.js:406)
-  [C | Ánh xạ] +getHubs(): List<Hub>
-    JS — renderParkingForm (src/pages/student/parking-charging.js:60)
-  [P | Ánh xạ] +checkAvailability(hubId: String, slotId: String, window: TimeWindow): AvailabilityResult
-    JS — parkingWindowAvailable (src/domain/student-rules.js:93); renderParkingForm (src/pages/student/parking-charging.js:60)
-    Có kiểm tra xung đột khung giờ trong giao dịch. Màn đặt chỉ hiện hiện trạng ô trước khi gửi, không xem trước theo khung giờ chọn.
+    JS — static ParkingService.getVehicles (src/application/student.js:362)
+  [C | Đúng lớp] +getHubs(): List<Hub>
+    JS — static ParkingService.getHubs (src/application/student.js:366); renderParkingForm (src/pages/student/parking-charging.js:60)
+  [C | Đúng lớp] +checkAvailability(hubId: String, slotId: String, window: TimeWindow): AvailabilityResult
+    JS — static ParkingService.checkAvailability (src/application/student.js:370); renderParkingForm (src/pages/student/parking-charging.js:60)
+    Form xem trước dùng chung kiểm tra quyền sở hữu, phiên bản và trùng khung giờ với bước xác nhận. Xem trước chưa giữ chỗ hoặc trừ cọc.
   [C | Đúng lớp] +confirmReservation(studentId: String, vehicleId: String, slotId: String, window: TimeWindow): ParkingReservation
-    JS — static ParkingService.confirmReservation (src/application/student.js:410)
+    JS — static ParkingService.confirmReservation (src/application/student.js:384)
   [C | Đúng lớp] +cancelReservation(reservationId: String): void
-    JS — static ParkingService.cancelReservation (src/application/student.js:478)
+    JS — static ParkingService.cancelReservation (src/application/student.js:456)
   [C | Đúng lớp] +checkIn(reservationId: String): boolean
-    JS — static ParkingService.checkIn (src/application/student.js:487)
-  [C | Ánh xạ] +expireOverdueReservations(): List<ParkingReservation>
-    JS — expireStudentHolds (src/application/student.js:603); ParkingService.closeParking (src/application/student.js:461)
-  [P | Ánh xạ] +reconcileSlot(slot: ParkingSpace): SpaceStatus
-    JS — ParkingService.closeParking (src/application/student.js:461); ParkingService.leaveParking (src/application/student.js:512); TelemetryService.updateState (src/application/telemetry.js:37)
-    Có kiểm tra cảm biến và giữ trạng thái vật lý trong các nhánh liên quan. Chưa có đối soát đầy đủ trạng thái ô sau hủy hoặc hết hạn.
+    JS — static ParkingService.checkIn (src/application/student.js:465)
+  [C | Đúng lớp] +expireOverdueReservations(): List<ParkingReservation>
+    JS — static ParkingService.expireOverdueReservations (src/application/student.js:436); expireStudentHolds (src/application/student.js:612); ParkingService.closeParking (src/application/student.js:427)
+  [C | Đúng lớp] +reconcileSlot(slot: ParkingSpace): SpaceStatus
+    JS — static ParkingService.reconcileSlot (src/application/student.js:443)
+    Sau hủy hoặc hết hạn, giữ hiện trạng xe. Mâu thuẫn cảm biến đưa ô sang diện đối soát.
 
-ParkingReservation — src/domain/entities.js:137 — 4/4 phương thức đúng lớp
+ParkingReservation — src/domain/entities.js:160 — 4/4 phương thức đúng lớp
   [C | Đúng lớp] +markCheckedIn(): void
-    JS — ParkingReservation.markCheckedIn (src/domain/entities.js:143)
+    JS — ParkingReservation.markCheckedIn (src/domain/entities.js:166)
   [C | Đúng lớp] +cancel(): void
-    JS — ParkingReservation.cancel (src/domain/entities.js:145)
+    JS — ParkingReservation.cancel (src/domain/entities.js:168)
   [C | Đúng lớp] +expire(): void
-    JS — ParkingReservation.expire (src/domain/entities.js:144)
+    JS — ParkingReservation.expire (src/domain/entities.js:167)
   [C | Đúng lớp] +isWithinGrace(now: DateTime): boolean
-    JS — ParkingReservation.isWithinGrace (src/domain/entities.js:141)
+    JS — ParkingReservation.isWithinGrace (src/domain/entities.js:164)
 
-ChargingScheduleService — src/application/student.js:532 — 3/7 phương thức đúng lớp
-  [C | Ánh xạ] +getActiveBookings(studentId: String): List<ParkingReservation>
-    JS — parkingView (src/pages/student/parking-charging.js:250); parkingRecord (src/pages/student/parking-charging.js:111)
-  [P | Đúng lớp] +getChargers(hubId: String, connectorType: String): List<ChargingPort>
-    JS — static ChargingScheduleService.getChargers (src/application/student.js:533); ChargingScheduleService.confirmSchedule (src/application/student.js:537)
-    Màn lọc theo Hub và tính sẵn sàng. Tương thích đầu nối được kiểm tra khi xác nhận, chưa lọc ở danh sách cổng.
-  [P | Ánh xạ] +checkAvailability(portId: String, window: TimeWindow): AvailabilityResult
-    JS — chargingWindowAvailable (src/domain/student-rules.js:121); parkingRecord (src/pages/student/parking-charging.js:111)
-    Có kiểm tra trùng lịch và công suất khi xác nhận. Chưa có phản hồi xem trước theo khung giờ trước khi gửi.
+ChargingScheduleService — src/application/student.js:510 — 7/7 phương thức đúng lớp
+  [C | Đúng lớp] +getActiveBookings(studentId: String): List<ParkingReservation>
+    JS — static ChargingScheduleService.getActiveBookings (src/application/student.js:511); parkingView (src/pages/student/parking-charging.js:256); parkingRecord (src/pages/student/parking-charging.js:113)
+  [C | Đúng lớp] +getChargers(hubId: String, connectorType: String): List<ChargingPort>
+    JS — static ChargingScheduleService.getChargers (src/application/student.js:516); parkingRecord (src/pages/student/parking-charging.js:113)
+    Lọc cổng theo Hub, trạng thái sử dụng và đầu nối của xe.
+  [C | Đúng lớp] +checkAvailability(portId: String, window: TimeWindow): AvailabilityResult
+    JS — static ChargingScheduleService.checkAvailability (src/application/student.js:520); parkingRecord (src/pages/student/parking-charging.js:113)
+    Xem trước theo khung giờ kiểm tra đơn đỗ, đầu nối, lịch chồng và giới hạn công suất. Kiểm tra lại khi xác nhận.
   [C | Đúng lớp] +confirmSchedule(reservationId: String, portId: String, window: TimeWindow): ChargingSchedule
-    JS — static ChargingScheduleService.confirmSchedule (src/application/student.js:537)
+    JS — static ChargingScheduleService.confirmSchedule (src/application/student.js:557)
   [C | Đúng lớp] +cancelSchedule(scheduleId: String): void
-    JS — static ChargingScheduleService.cancelSchedule (src/application/student.js:588)
-  [C | Ánh xạ] +cancelScheduleByReservationExpiry(reservationId: String): void
-    JS — ParkingService.closeParking (src/application/student.js:461); expireStudentHolds (src/application/student.js:603)
-  [P | Ánh xạ] +reconcilePort(port: ChargingPort): PortStatus
-    JS — ChargingScheduleService.closeSchedule (src/application/student.js:597); ChargingSessionService.disconnectCharger (src/application/charging.js:103); TelemetryService.updateState (src/application/telemetry.js:37)
-    Có các kiểm tra ở đặt lịch, telemetry và rút cáp. Chưa có bước đối soát cổng riêng sau hủy lịch.
+    JS — static ChargingScheduleService.cancelSchedule (src/application/student.js:577)
+  [C | Đúng lớp] +cancelScheduleByReservationExpiry(reservationId: String): void
+    JS — static ChargingScheduleService.cancelScheduleByReservationExpiry (src/application/student.js:592); ParkingService.closeParking (src/application/student.js:427); expireStudentHolds (src/application/student.js:612)
+  [C | Đúng lớp] +reconcilePort(port: ChargingPort): PortStatus
+    JS — static ChargingScheduleService.reconcilePort (src/application/student.js:598)
+    Sau thay đổi lịch hoặc chạy kiểm tra hạn, cập nhật lịch giữ đang hiệu lực và đối soát tín hiệu relay, cáp. Cảm biến mất kết nối tạm thời có thể phục hồi.
 
-ChargingSchedule — src/domain/entities.js:148 — 5/5 phương thức đúng lớp
+ChargingSchedule — src/domain/entities.js:171 — 5/5 phương thức đúng lớp
   [C | Đúng lớp] +markScheduled(): void
-    JS — ChargingSchedule.markScheduled (src/domain/entities.js:151)
+    JS — ChargingSchedule.markScheduled (src/domain/entities.js:174)
   [C | Đúng lớp] +markCharging(): void
-    JS — ChargingSchedule.markCharging (src/domain/entities.js:152)
+    JS — ChargingSchedule.markCharging (src/domain/entities.js:175)
   [C | Đúng lớp] +complete(): void
-    JS — ChargingSchedule.complete (src/domain/entities.js:153)
+    JS — ChargingSchedule.complete (src/domain/entities.js:176)
   [C | Đúng lớp] +cancel(): void
-    JS — ChargingSchedule.cancel (src/domain/entities.js:154)
+    JS — ChargingSchedule.cancel (src/domain/entities.js:177)
   [C | Đúng lớp] +expire(): void
-    JS — ChargingSchedule.expire (src/domain/entities.js:155)
+    JS — ChargingSchedule.expire (src/domain/entities.js:178)
 
-ChargingPort — src/domain/entities.js:158 — 3/7 phương thức đúng lớp
-  [P | Ánh xạ] +markReserved(): void
-    JS — ChargingScheduleService.confirmSchedule (src/application/student.js:537); chargingWindowAvailable (src/domain/student-rules.js:121)
-    Giữ quyền theo bản ghi lịch và kiểm tra giao nhau. Không chuyển cổng sang RESERVED.
+ChargingPort — src/domain/entities.js:181 — 7/7 phương thức đúng lớp
+  [C | Đúng lớp] +markReserved(): void
+    JS — ChargingPort.markReserved (src/domain/entities.js:184); ChargingScheduleService.reconcilePort (src/application/student.js:598)
+    Ghi reservedScheduleId theo khung giờ đang hiệu lực. Trạng thái vật lý giữ nguyên để cho phép lịch khác ở khung giờ khác.
   [C | Đúng lớp] +markOccupiedWaiting(): void
-    JS — ChargingPort.markOccupiedWaiting (src/domain/entities.js:161)
+    JS — ChargingPort.markOccupiedWaiting (src/domain/entities.js:193)
   [C | Đúng lớp] +markCharging(): void
-    JS — ChargingPort.markCharging (src/domain/entities.js:168)
-  [N | Thiếu] +markChargedFull(): void
-    Mã liên quan — src/utils/status.js:26; ChargingSessionService.energize (src/application/charging.js:22)
-    Có hằng CHARGED_FULL trong status.js. Không có nhánh ghi trạng thái này hoặc kích hoạt theo mức pin.
+    JS — ChargingPort.markCharging (src/domain/entities.js:200)
+  [C | Đúng lớp] +markChargedFull(): void
+    JS — ChargingPort.markChargedFull (src/domain/entities.js:188); ChargingSessionService.updateSessionReading (src/application/charging.js:85); chargingRecord (src/pages/student/parking-charging.js:180)
+    Nhận mức pin 100% từ gói mô phỏng. Chuyển CHARGED_FULL sau xác nhận ngắt điện và giữ kết nối cáp cho đến khi người dùng rút.
   [C | Đúng lớp] +markAvailable(): void
-    JS — ChargingPort.markAvailable (src/domain/entities.js:172)
-  [P | Ánh xạ] +markPendingCheck(): void
-    JS — IncidentService.isolateResource (src/application/operator.js:480); IncidentService.stopCharging (src/application/operator.js:471)
-    Có chặn sử dụng và đưa hồ sơ sự cố vào PENDING_CHECK. Không chuyển cổng sang trạng thái riêng tương ứng.
-  [P | Ánh xạ] +markFaulted(): void
-    JS — IncidentService.isolateResource (src/application/operator.js:480); deviceResult (src/application/device-control.js:6)
-    Chặn hoặc chuyển OUT_OF_SERVICE theo xử lý sự cố. Không có chuyển cổng sang FAULTED riêng.
-
-ChargingSessionService — src/application/charging.js:9 — 2/6 phương thức đúng lớp
-  [C | Đúng lớp] +startSession(code: String, hubId: String): ChargingSession
-    JS — static ChargingSessionService.startSession (src/application/charging.js:141)
-  [C | Ánh xạ] +requestControl(targetId: String, command: ControlCommand): ControlStatus
-    JS — deviceResult (src/application/device-control.js:6); DeviceControlGateway.requestControl (src/infrastructure/device.js:7)
-  [P | Ánh xạ] +updateSessionReading(sessionId: String, batteryPct: int, powerKw: double, energyKwh: double): void
-    JS — ChargingSessionService.chargeReading (src/application/charging.js:61); ChargingSession.updateReading (src/domain/entities.js:185)
-    chargeReading tính kWh và chi phí từ công suất và thời gian. Dữ liệu đo pin, công suất và năng lượng chưa được nạp vào phiên qua API cập nhật số đo.
-  [C | Đúng lớp] +stopSession(sessionId: String, reason: String): ChargingSession
-    JS — static ChargingSessionService.stopSession (src/application/charging.js:146)
-  [P | Ánh xạ] +handleControlFailure(sessionId: String, command: ControlCommand): void
-    JS — ChargingSessionService.deenergize (src/application/charging.js:75); deviceResult (src/application/device-control.js:6)
-    Có ghi lỗi lệnh và giữ trạng thái an toàn. Timeout được báo tại luồng hiện hành, chưa luôn chuyển qua hàng đợi Operator.
-  [P | Ánh xạ] +handleElectricalFault(sessionId: String, faultCode: String): void
-    JS — ChargingSessionService.deenergize (src/application/charging.js:75); IncidentService.stopCharging (src/application/operator.js:471); deviceResult (src/application/device-control.js:6)
-    Lỗi có thể tạo Incident và cập nhật faultCode. Phiên vẫn giữ trạng thái vật lý tới xác nhận ngắt, không có luồng chốt riêng phiên lỗi.
-
-ChargingSession — src/domain/entities.js:180 — 3/4 phương thức đúng lớp
-  [C | Đúng lớp] +markCharging(startedAt: DateTime): void
-    JS — ChargingSession.markCharging (src/domain/entities.js:183)
-  [P | Đúng lớp] +updateReading(batteryPct: int, powerKw: double, energyKwh: double): void
-    JS — ChargingSession.updateReading (src/domain/entities.js:185); ChargingSessionService.chargeReading (src/application/charging.js:61); ChargingSessionService.deenergize (src/application/charging.js:75)
-    Phương thức cập nhật được kWh và chi phí ước tính. Bộ số đo pin, công suất, năng lượng từ nguồn đo chưa được cập nhật đầy đủ vào phiên.
-  [C | Đúng lớp] +complete(endedAt: DateTime, finalEnergyKwh: double): void
-    JS — ChargingSession.complete (src/domain/entities.js:187)
-  [P | Ánh xạ] +markFaulted(faultCode: String): void
-    JS — ChargingSessionService.deenergize (src/application/charging.js:75); deviceResult (src/application/device-control.js:6)
-    Lưu faultCode trên phiên khi ngắt thất bại. Không có chuyển phiên sang FAILED riêng.
-
-3.4 Điều phối xe giữa các Hub (UC09) — 8 phương thức · 7 đúng lớp · 8 C · 0 P · 0 N
-
-RebalanceController — src/application/operator.js:271 — 2/2 phương thức đúng lớp
-  [C | Đúng lớp] +getEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
-    JS — static RebalanceController.getEligibleVehicles (src/application/operator.js:272)
-  [C | Đúng lớp] +createDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): ApiResponse
-    JS — static RebalanceController.createDispatchOrder (src/application/operator.js:276)
-
-DispatchService — src/application/operator.js:53 — 3/4 phương thức đúng lớp
-  [C | Đúng lớp] +filterEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
-    JS — static DispatchService.filterEligibleVehicles (src/application/operator.js:54)
-  [C | Đúng lớp] +processDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): DispatchOrder
-    JS — static DispatchService.processDispatchOrder (src/application/operator.js:82)
-  [C | Đúng lớp] +cancelDispatchOrder(orderId: String): void
-    JS — static DispatchService.cancelDispatchOrder (src/application/operator.js:135)
-  [C | Ánh xạ] +completeDispatchOrder(orderId: String): void
-    JS — DispatchService.changeOrder (src/application/operator.js:161); DispatchOrder.complete (src/domain/entities.js:196)
-
-DispatchOrder — src/domain/entities.js:190 — 2/2 phương thức đúng lớp
-  [C | Đúng lớp] +complete(): void
-    JS — DispatchOrder.complete (src/domain/entities.js:196)
-  [C | Đúng lớp] +cancel(): void
-    JS — DispatchOrder.cancel (src/domain/entities.js:194)
-
-3.5 Điều phối lịch sạc theo công suất Hub (UC10) — 5 phương thức · 5 đúng lớp · 5 C · 0 P · 0 N
-
-ChargingSchedulerController — src/application/operator.js:416 — 2/2 phương thức đúng lớp
-  [C | Đúng lớp] +getProposedSchedule(hubId: String): ChargingPlan
-    JS — static ChargingSchedulerController.getProposedSchedule (src/application/operator.js:417)
-  [C | Đúng lớp] +applyChargingSchedule(hubId: String, plan: ChargingPlan): ApiResponse
-    JS — static ChargingSchedulerController.applyChargingSchedule (src/application/operator.js:421)
-
-SmartChargingService — src/application/operator.js:288 — 3/3 phương thức đúng lớp
-  [C | Đúng lớp] +calculateSmartSchedule(hubId: String): ChargingPlan
-    JS — static SmartChargingService.calculateSmartSchedule (src/application/operator.js:289)
-  [C | Đúng lớp] +applyChargingSchedule(hubId: String, plan: ChargingPlan): boolean
-    JS — static SmartChargingService.applyChargingSchedule (src/application/operator.js:374)
-  [C | Đúng lớp] +checkPowerConstraints(hubId: String, plan: ChargingPlan): boolean
-    JS — static SmartChargingService.checkPowerConstraints (src/application/operator.js:370)
-
-ChargingPlan — src/domain/entities.js:203 — 0/0 phương thức đúng lớp
-  UML chỉ khai báo thuộc tính.
-
-ChargingCommand — src/domain/entities.js:207 — 0/0 phương thức đúng lớp
-  UML chỉ khai báo thuộc tính.
-
-3.6 Giám sát thiết bị và cách ly sự cố (UC11, UC14) — 30 phương thức · 19 đúng lớp · 25 C · 3 P · 2 N
-
-TelemetryService — src/application/telemetry.js:29 — 3/7 phương thức đúng lớp
-  [P | Ánh xạ] +registerSensor(sensor: Sensor): void
-    JS — TelemetryService.receiveTelemetry (src/application/telemetry.js:76); Sensor (src/domain/entities.js:211)
-    Tự thêm bản ghi khi nhận gói từ thiết bị đã có. Không có thao tác đăng ký cảm biến độc lập.
-  [C | Đúng lớp] +receiveTelemetry(event: TelemetryEvent): boolean
-    JS — static TelemetryService.receiveTelemetry (src/application/telemetry.js:76)
-  [C | Ánh xạ] +validatePacket(event: TelemetryEvent): boolean
-    JS — TelemetryService.receiveTelemetry (src/application/telemetry.js:76); TelemetryEvent.isWellFormed (src/domain/entities.js:222)
-  [C | Đúng lớp] +updateState(event: TelemetryEvent): boolean
-    JS — static TelemetryService.updateState (src/application/telemetry.js:37)
-  [C | Ánh xạ] +evaluateAndAlert(event: TelemetryEvent): void
-    JS — TelemetryService.updateState (src/application/telemetry.js:37); MonitoringService.triggerRebalanceAlertIfNeeded (src/application/monitoring.js:22)
-  [P | Ánh xạ] +publishEvent(eventType: String, event: TelemetryEvent): void
-    JS — TelemetryService.updateState (src/application/telemetry.js:37); NotificationService.sendNotification (src/domain/notifications.js:6); recordIncident (src/domain/incidents.js:28)
-    Gọi trực tiếp cập nhật, thông báo hoặc tạo sự cố. Không có API phát sự kiện phân loại độc lập.
-  [C | Đúng lớp] +checkTimeouts(): List<Sensor>
-    JS — static TelemetryService.checkTimeouts (src/application/telemetry.js:133)
-
-Sensor — src/domain/entities.js:211 — 3/3 phương thức đúng lớp
-  [C | Đúng lớp] +markOnline(ts: DateTime): void
-    JS — Sensor.markOnline (src/domain/entities.js:214)
-  [C | Đúng lớp] +markOffline(): void
-    JS — Sensor.markOffline (src/domain/entities.js:215)
-  [C | Đúng lớp] +isTimedOut(now: DateTime, timeoutSec: int): boolean
-    JS — Sensor.isTimedOut (src/domain/entities.js:216)
-
-TelemetryEvent — src/domain/entities.js:219 — 2/2 phương thức đúng lớp
-  [C | Đúng lớp] +isWellFormed(): boolean
-    JS — TelemetryEvent.isWellFormed (src/domain/entities.js:222)
-  [C | Đúng lớp] +isNewerThan(lastTs: DateTime): boolean
-    JS — TelemetryEvent.isNewerThan (src/domain/entities.js:238)
-
-IncidentService — src/application/operator.js:430 — 5/9 phương thức đúng lớp
-  [C | Đúng lớp] +receiveAlert(type: ResourceType, resourceId: String, hubId: String, reason: String): Incident
-    JS — static IncidentService.receiveAlert (src/application/operator.js:453)
-  [C | Đúng lớp] +classifyAndPrioritize(incident: Incident, category: String, severity: Severity): void
-    JS — static IncidentService.classifyAndPrioritize (src/application/operator.js:462)
-  [C | Đúng lớp] +isolateResource(incident: Incident): IncidentStatus
-    JS — static IncidentService.isolateResource (src/application/operator.js:480)
-  [C | Ánh xạ] +requestControl(targetId: String, command: ControlCommand): ControlStatus
-    JS — IncidentService.isolateResource (src/application/operator.js:480); IncidentService.stopCharging (src/application/operator.js:471); DeviceControlGateway.requestControl (src/infrastructure/device.js:7)
-  [C | Ánh xạ] +createWorkOrder(incident: Incident, assignedUnit: String): WorkOrder
-    JS — IncidentService.sendWorkOrder (src/application/operator.js:519); WorkOrder (src/domain/entities.js:249)
-  [C | Đúng lớp] +sendWorkOrder(wo: WorkOrder): boolean
-    JS — static IncidentService.sendWorkOrder (src/application/operator.js:519)
-  [P | Ánh xạ] +resendPendingWorkOrders(): void
-    JS — IncidentService.sendWorkOrder (src/application/operator.js:519); incidents (src/pages/operator/views.js:387)
-    Operator gửi lại từng phiếu cùng mã. Không có thao tác gửi hàng loạt hoặc tự gửi lại toàn hàng đợi.
-  [C | Đúng lớp] +handleAffectedBookings(incident: Incident): void
-    JS — static IncidentService.handleAffectedBookings (src/application/operator.js:577); recordIncident (src/domain/incidents.js:28); remedyForm (src/pages/operator/views.js:311)
-    Hệ thống đánh dấu đơn bị ảnh hưởng, hiện các phương án thay tài nguyên và kiểm tra lại khi lưu. PDF cho phép chọn nhánh đổi tài nguyên hoặc hàng đợi ưu tiên.
-  [C | Ánh xạ] +syncDashboard(incident: Incident): void
-    JS — execute (src/app.js:437); incidents (src/pages/operator/views.js:387)
-
-Incident — src/domain/entities.js:241 — 3/5 phương thức đúng lớp
-  [C | Đúng lớp] +markIsolated(): void
-    JS — Incident.markIsolated (src/domain/entities.js:245)
+    JS — ChargingPort.markAvailable (src/domain/entities.js:204)
   [C | Đúng lớp] +markPendingCheck(): void
-    JS — Incident.markPendingCheck (src/domain/entities.js:244)
-  [C | Ánh xạ] +deferIsolation(): void
-    JS — IncidentService.isolateResource (src/application/operator.js:480); Incident.markPendingCheck (src/domain/entities.js:244)
-  [N | Thiếu] +cancel(): void
-    Mã liên quan — IncidentService.handleIncident (src/application/operator.js:431); Incident (src/domain/entities.js:241)
-    Có luồng cách ly và đóng sau nghiệm thu. Không có nhánh hủy hồ sơ sự cố.
-  [C | Đúng lớp] +resolve(): void
-    JS — Incident.resolve (src/domain/entities.js:246)
+    JS — ChargingPort.markPendingCheck (src/domain/entities.js:185)
+    Ghi inspectionStatus=PENDING_CHECK và chặn cấp phát khi tín hiệu hoặc kết quả điều khiển cần đối soát.
+  [C | Đúng lớp] +markFaulted(): void
+    JS — ChargingPort.markFaulted (src/domain/entities.js:186)
+    Ghi inspectionStatus=FAULTED sau khi cách ly an toàn. Giữ xếp loại vật lý tương thích với luồng hiện có.
 
-WorkOrder — src/domain/entities.js:249 — 3/4 phương thức đúng lớp
-  [C | Đúng lớp] +markSent(): void
-    JS — WorkOrder.markSent (src/domain/entities.js:252)
-  [C | Đúng lớp] +markPendingResend(): void
-    JS — WorkOrder.markPendingResend (src/domain/entities.js:253)
-  [N | Thiếu] +markInProgress(): void
-    Mã liên quan — IncidentService.sendWorkOrder (src/application/operator.js:519); WorkOrder (src/domain/entities.js:249)
-    Incident chuyển IN_REPAIR khi gửi phiếu. WorkOrder có SENT và DONE, không có trạng thái đang thực hiện riêng.
+ChargingSessionService — src/application/charging.js:11 — 6/6 phương thức đúng lớp
+  [C | Đúng lớp] +startSession(code: String, hubId: String): ChargingSession
+    JS — static ChargingSessionService.startSession (src/application/charging.js:195)
+  [C | Đúng lớp] +requestControl(targetId: String, command: ControlCommand): ControlStatus
+    JS — static ChargingSessionService.requestControl (src/application/charging.js:66); deviceResult (src/application/device-control.js:6); DeviceControlGateway.requestControl (src/infrastructure/device.js:7)
+  [C | Đúng lớp] +updateSessionReading(sessionId: String, batteryPct: int, powerKw: double, energyKwh: double): void
+    JS — static ChargingSessionService.updateSessionReading (src/application/charging.js:85)
+    Kiểm tra và lưu SoC, công suất đo và điện năng tích lũy từ telemetry mô phỏng. Từ chối mốc cũ và số đo không hợp lệ.
+  [C | Đúng lớp] +stopSession(sessionId: String, reason: String): ChargingSession
+    JS — static ChargingSessionService.stopSession (src/application/charging.js:200)
+  [C | Đúng lớp] +handleControlFailure(sessionId: String, command: ControlCommand): void
+    JS — static ChargingSessionService.handleControlFailure (src/application/charging.js:112)
+    Giữ trạng thái an toàn khi lệnh sạc lỗi hoặc timeout, lưu mã lệnh và thông báo Operator đối soát.
+  [C | Đúng lớp] +handleElectricalFault(sessionId: String, faultCode: String): void
+    JS — static ChargingSessionService.handleElectricalFault (src/application/charging.js:120)
+    Ghi mã lỗi vào phiên, tạo Incident và thông báo người dùng. Phiên chỉ chốt FAILED khi đã ngắt điện và rút cáp.
+
+ChargingSession — src/domain/entities.js:212 — 4/4 phương thức đúng lớp
+  [C | Đúng lớp] +markCharging(startedAt: DateTime): void
+    JS — ChargingSession.markCharging (src/domain/entities.js:215)
+  [C | Đúng lớp] +updateReading(batteryPct: int, powerKw: double, energyKwh: double): void
+    JS — ChargingSession.updateReading (src/domain/entities.js:217)
+    Cập nhật pin, công suất đo và điện năng từ gói mô phỏng. Khi thiếu số đo, màn demo tiếp tục dùng ước tính theo thời gian.
+  [C | Đúng lớp] +complete(endedAt: DateTime, finalEnergyKwh: double): void
+    JS — ChargingSession.complete (src/domain/entities.js:225)
+  [C | Đúng lớp] +markFaulted(faultCode: String): void
+    JS — ChargingSession.markFaulted (src/domain/entities.js:219); ChargingSessionService.handleElectricalFault (src/application/charging.js:120); ChargingSessionService.disconnectCharger (src/application/charging.js:157)
+    Lưu mã lỗi và cờ lỗi điện. Chốt trạng thái lỗi khi đã xử lý cáp an toàn.
+
+3.4 Điều phối xe giữa các Hub (UC09) — 8 phương thức · 8 đúng lớp · 8 C · 0 M
+
+RebalanceController — src/application/operator.js:292 — 2/2 phương thức đúng lớp
+  [C | Đúng lớp] +getEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
+    JS — static RebalanceController.getEligibleVehicles (src/application/operator.js:293)
+  [C | Đúng lớp] +createDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): ApiResponse
+    JS — static RebalanceController.createDispatchOrder (src/application/operator.js:297)
+
+DispatchService — src/application/operator.js:68 — 4/4 phương thức đúng lớp
+  [C | Đúng lớp] +filterEligibleVehicles(sourceHubId: String, destHubId: String): DispatchPreview
+    JS — static DispatchService.filterEligibleVehicles (src/application/operator.js:69)
+  [C | Đúng lớp] +processDispatchOrder(sourceHubId: String, destHubId: String, vehicleVersions: Map<String, long>, destCapacityVersion: long, transporterId: String): DispatchOrder
+    JS — static DispatchService.processDispatchOrder (src/application/operator.js:97)
+  [C | Đúng lớp] +cancelDispatchOrder(orderId: String): void
+    JS — static DispatchService.cancelDispatchOrder (src/application/operator.js:151)
+  [C | Đúng lớp] +completeDispatchOrder(orderId: String): void
+    JS — static DispatchService.completeDispatchOrder (src/application/operator.js:286); DispatchService.changeOrder (src/application/operator.js:177); DispatchOrder.complete (src/domain/entities.js:234)
+
+DispatchOrder — src/domain/entities.js:228 — 2/2 phương thức đúng lớp
   [C | Đúng lớp] +complete(): void
-    JS — WorkOrder.complete (src/domain/entities.js:254)
+    JS — DispatchOrder.complete (src/domain/entities.js:234)
+  [C | Đúng lớp] +cancel(): void
+    JS — DispatchOrder.cancel (src/domain/entities.js:232)
 
-3.7 Mô phỏng và áp dụng khuyến nghị (UC12–UC13) — 19 phương thức · 14 đúng lớp · 9 C · 10 P · 0 N
+3.5 Điều phối lịch sạc theo công suất Hub (UC10) — 5 phương thức · 5 đúng lớp · 5 C · 0 M
 
-SimulationService — src/application/simulation.js:7 — 5/8 phương thức đúng lớp
-  [C | Ánh xạ] +getNetworkSnapshot(): NetworkSnapshot
-    JS — SimulationService.runSimulation (src/application/simulation.js:33); MonitoringService.getNetworkOverviewSnapshot (src/application/monitoring.js:11)
-  [P | Ánh xạ] +getSavedScenario(scenarioId: String): SimulationScenario
-    JS — SimulationService.runSimulation (src/application/simulation.js:33); whatIf (src/pages/operator/views.js:496)
-    Đọc mẫu DRAFT theo templateId để chạy lại. Màn hình chỉ hiển thị kết quả gần nhất, không mở lại kết quả cũ theo mã.
+ChargingSchedulerController — src/application/operator.js:437 — 2/2 phương thức đúng lớp
+  [C | Đúng lớp] +getProposedSchedule(hubId: String): ChargingPlan
+    JS — static ChargingSchedulerController.getProposedSchedule (src/application/operator.js:438)
+  [C | Đúng lớp] +applyChargingSchedule(hubId: String, plan: ChargingPlan): ApiResponse
+    JS — static ChargingSchedulerController.applyChargingSchedule (src/application/operator.js:442)
+
+SmartChargingService — src/application/operator.js:309 — 3/3 phương thức đúng lớp
+  [C | Đúng lớp] +calculateSmartSchedule(hubId: String): ChargingPlan
+    JS — static SmartChargingService.calculateSmartSchedule (src/application/operator.js:310)
+  [C | Đúng lớp] +applyChargingSchedule(hubId: String, plan: ChargingPlan): boolean
+    JS — static SmartChargingService.applyChargingSchedule (src/application/operator.js:395)
+  [C | Đúng lớp] +checkPowerConstraints(hubId: String, plan: ChargingPlan): boolean
+    JS — static SmartChargingService.checkPowerConstraints (src/application/operator.js:391)
+
+ChargingPlan — src/domain/entities.js:241 — 0/0 phương thức đúng lớp
+  UML chỉ khai báo thuộc tính.
+
+ChargingCommand — src/domain/entities.js:245 — 0/0 phương thức đúng lớp
+  UML chỉ khai báo thuộc tính.
+
+3.6 Giám sát thiết bị và cách ly sự cố (UC11, UC14) — 30 phương thức · 30 đúng lớp · 30 C · 0 M
+
+TelemetryService — src/application/telemetry.js:36 — 7/7 phương thức đúng lớp
+  [C | Đúng lớp] +registerSensor(sensor: Sensor): void
+    JS — static TelemetryService.registerSensor (src/application/telemetry.js:44)
+    Operator đăng ký cảm biến độc lập với việc phát gói. Đăng ký lại cùng mã chỉ dùng một bản ghi.
+  [C | Đúng lớp] +receiveTelemetry(event: TelemetryEvent): boolean
+    JS — static TelemetryService.receiveTelemetry (src/application/telemetry.js:136)
+  [C | Đúng lớp] +validatePacket(event: TelemetryEvent): boolean
+    JS — static TelemetryService.validatePacket (src/application/telemetry.js:132); TelemetryService.receiveTelemetry (src/application/telemetry.js:136); TelemetryEvent.isWellFormed (src/domain/entities.js:260)
+  [C | Đúng lớp] +updateState(event: TelemetryEvent): boolean
+    JS — static TelemetryService.updateState (src/application/telemetry.js:69)
+  [C | Đúng lớp] +evaluateAndAlert(event: TelemetryEvent): void
+    JS — static TelemetryService.evaluateAndAlert (src/application/telemetry.js:100); TelemetryService.updateState (src/application/telemetry.js:69); MonitoringService.triggerRebalanceAlertIfNeeded (src/application/monitoring.js:30)
+  [C | Đúng lớp] +publishEvent(eventType: String, event: TelemetryEvent): void
+    JS — static TelemetryService.publishEvent (src/application/telemetry.js:122); TelemetryService.receiveTelemetry (src/application/telemetry.js:136)
+    Phân loại gói đã nhận và chuyển tới cập nhật, theo dõi mất kết nối, giám sát hoặc xử lý sự cố trong giao dịch cục bộ.
+  [C | Đúng lớp] +checkTimeouts(): List<Sensor>
+    JS — static TelemetryService.checkTimeouts (src/application/telemetry.js:184)
+
+Sensor — src/domain/entities.js:249 — 3/3 phương thức đúng lớp
+  [C | Đúng lớp] +markOnline(ts: DateTime): void
+    JS — Sensor.markOnline (src/domain/entities.js:252)
+  [C | Đúng lớp] +markOffline(): void
+    JS — Sensor.markOffline (src/domain/entities.js:253)
+  [C | Đúng lớp] +isTimedOut(now: DateTime, timeoutSec: int): boolean
+    JS — Sensor.isTimedOut (src/domain/entities.js:254)
+
+TelemetryEvent — src/domain/entities.js:257 — 2/2 phương thức đúng lớp
+  [C | Đúng lớp] +isWellFormed(): boolean
+    JS — TelemetryEvent.isWellFormed (src/domain/entities.js:260)
+  [C | Đúng lớp] +isNewerThan(lastTs: DateTime): boolean
+    JS — TelemetryEvent.isNewerThan (src/domain/entities.js:278)
+
+IncidentService — src/application/operator.js:451 — 9/9 phương thức đúng lớp
+  [C | Đúng lớp] +receiveAlert(type: ResourceType, resourceId: String, hubId: String, reason: String): Incident
+    JS — static IncidentService.receiveAlert (src/application/operator.js:488)
+  [C | Đúng lớp] +classifyAndPrioritize(incident: Incident, category: String, severity: Severity): void
+    JS — static IncidentService.classifyAndPrioritize (src/application/operator.js:497)
+  [C | Đúng lớp] +isolateResource(incident: Incident): IncidentStatus
+    JS — static IncidentService.isolateResource (src/application/operator.js:520)
+  [C | Đúng lớp] +requestControl(targetId: String, command: ControlCommand): ControlStatus
+    JS — static IncidentService.requestControl (src/application/operator.js:516); IncidentService.isolateResource (src/application/operator.js:520); IncidentService.stopCharging (src/application/operator.js:506); DeviceControlGateway.requestControl (src/infrastructure/device.js:7)
+  [C | Đúng lớp] +createWorkOrder(incident: Incident, assignedUnit: String): WorkOrder
+    JS — static IncidentService.createWorkOrder (src/application/operator.js:561); IncidentService.sendWorkOrder (src/application/operator.js:574); WorkOrder (src/domain/entities.js:291)
+  [C | Đúng lớp] +sendWorkOrder(wo: WorkOrder): boolean
+    JS — static IncidentService.sendWorkOrder (src/application/operator.js:574)
+  [C | Đúng lớp] +resendPendingWorkOrders(): void
+    JS — static IncidentService.resendPendingWorkOrders (src/application/operator.js:593)
+    Gửi lại các phiếu đang chờ và giữ nguyên mã phiếu. Thao tác gửi lại từng phiếu vẫn dùng được.
+  [C | Đúng lớp] +handleAffectedBookings(incident: Incident): void
+    JS — static IncidentService.handleAffectedBookings (src/application/operator.js:661); recordIncident (src/domain/incidents.js:28); remedyForm (src/pages/operator/views.js:314)
+    Hệ thống đánh dấu đơn bị ảnh hưởng, hiện các phương án thay tài nguyên và kiểm tra lại khi lưu. PDF cho phép chọn nhánh đổi tài nguyên hoặc hàng đợi ưu tiên.
+  [C | Đúng lớp] +syncDashboard(incident: Incident): void
+    JS — static IncidentService.syncDashboard (src/application/operator.js:452); execute (src/app.js:449); incidents (src/pages/operator/views.js:390)
+
+Incident — src/domain/entities.js:281 — 5/5 phương thức đúng lớp
+  [C | Đúng lớp] +markIsolated(): void
+    JS — Incident.markIsolated (src/domain/entities.js:286)
+  [C | Đúng lớp] +markPendingCheck(): void
+    JS — Incident.markPendingCheck (src/domain/entities.js:284)
+  [C | Đúng lớp] +deferIsolation(): void
+    JS — Incident.deferIsolation (src/domain/entities.js:285); IncidentService.isolateResource (src/application/operator.js:520); Incident.markPendingCheck (src/domain/entities.js:284)
+  [C | Đúng lớp] +cancel(): void
+    JS — Incident.cancel (src/domain/entities.js:288); IncidentService.cancelIncident (src/application/operator.js:620)
+    Hủy hồ sơ thủ công trước cách ly khi đã xử lý các đơn ảnh hưởng. Ghi lý do và giữ chặn do cảnh báo hệ thống.
+  [C | Đúng lớp] +resolve(): void
+    JS — Incident.resolve (src/domain/entities.js:287)
+
+WorkOrder — src/domain/entities.js:291 — 4/4 phương thức đúng lớp
+  [C | Đúng lớp] +markSent(): void
+    JS — WorkOrder.markSent (src/domain/entities.js:294)
+  [C | Đúng lớp] +markPendingResend(): void
+    JS — WorkOrder.markPendingResend (src/domain/entities.js:295)
+  [C | Đúng lớp] +markInProgress(): void
+    JS — WorkOrder.markInProgress (src/domain/entities.js:296); IncidentService.markWorkInProgress (src/application/operator.js:605)
+    Phiếu đã gửi có thao tác xác nhận đang sửa. Lưu thời điểm và hiện IN_PROGRESS trước khi nghiệm thu.
+  [C | Đúng lớp] +complete(): void
+    JS — WorkOrder.complete (src/domain/entities.js:297)
+
+3.7 Mô phỏng và áp dụng khuyến nghị (UC12–UC13) — 19 phương thức · 19 đúng lớp · 19 C · 0 M
+
+SimulationService — src/application/simulation.js:7 — 8/8 phương thức đúng lớp
+  [C | Đúng lớp] +getNetworkSnapshot(): NetworkSnapshot
+    JS — static SimulationService.getNetworkSnapshot (src/application/simulation.js:31); SimulationService.runSimulation (src/application/simulation.js:47); MonitoringService.getNetworkOverviewSnapshot (src/application/monitoring.js:11)
+  [C | Đúng lớp] +getSavedScenario(scenarioId: String): SimulationScenario
+    JS — static SimulationService.getSavedScenario (src/application/simulation.js:27); whatIf (src/pages/operator/views.js:505)
+    Tra cứu cả mẫu và kết quả đã lưu theo mã. Operator có thể xem lại kết quả cũ.
   [C | Đúng lớp] +saveScenarioTemplate(params: ScenarioParams, operatorId: String): SimulationScenario
-    JS — static SimulationService.saveScenarioTemplate (src/application/simulation.js:21)
-  [P | Đúng lớp] +runSimulation(scenarioParams: ScenarioParams, operatorId: String): SimulationScenario
-    JS — static SimulationService.runSimulation (src/application/simulation.js:33)
-    Có dự báo, điểm nghẽn và kết quả lưu trên snapshot. Vòng lặp cố định nên không có nhánh ghi FAILED vì timeout hoặc không hội tụ.
-  [P | Đúng lớp] -validateParams(scenarioParams: ScenarioParams): List<String>
+    JS — static SimulationService.saveScenarioTemplate (src/application/simulation.js:35)
+  [C | Đúng lớp] +runSimulation(scenarioParams: ScenarioParams, operatorId: String): SimulationScenario
+    JS — static SimulationService.runSimulation (src/application/simulation.js:47)
+    Mô hình hữu hạn của SPA ghi COMPLETED hoặc FAILED khi vượt thời hạn hay sinh giá trị không hữu hạn.
+  [C | Đúng lớp] -validateParams(scenarioParams: ScenarioParams): List<String>
     JS — static SimulationService.validateParams (src/application/simulation.js:8)
-    Kiểm tra các điều kiện và ném lỗi đầu tiên. Không trả danh sách lỗi.
+    Trả danh sách lỗi đầu vào để người dùng sửa cùng lúc.
   [C | Đúng lớp] -executeMovementModel(snapshot: NetworkSnapshot, params: ScenarioParams, timeSlots: int): List<ForecastStep>
-    JS — static SimulationService.executeMovementModel (src/application/simulation.js:52)
+    JS — static SimulationService.executeMovementModel (src/application/simulation.js:77)
   [C | Đúng lớp] -calculateBottlenecks(forecast: List<ForecastStep>, snapshot: NetworkSnapshot): List<Bottleneck>
-    JS — static SimulationService.calculateBottlenecks (src/application/simulation.js:82)
-  [C | Ánh xạ] -saveSimulationResult(resultId: String, forecastData: List<ForecastStep>, bottlenecks: List<Bottleneck>): void
-    JS — SimulationService.runSimulation (src/application/simulation.js:33); SimulationScenario (src/domain/entities.js:263)
+    JS — static SimulationService.calculateBottlenecks (src/application/simulation.js:110)
+  [C | Đúng lớp] -saveSimulationResult(resultId: String, forecastData: List<ForecastStep>, bottlenecks: List<Bottleneck>): void
+    JS — static SimulationService.saveSimulationResult (src/application/simulation.js:71); SimulationService.runSimulation (src/application/simulation.js:47); SimulationScenario (src/domain/entities.js:306)
 
-RecommendationService — src/application/operator.js:700 — 5/7 phương thức đúng lớp
+RecommendationService — src/application/operator.js:784 — 7/7 phương thức đúng lớp
   [C | Đúng lớp] +generateRecommendations(scenario: SimulationScenario): List<Recommendation>
-    JS — static RecommendationService.generateRecommendations (src/application/operator.js:701)
-  [C | Ánh xạ] +getRecommendations(simulationId: String): List<Recommendation>
-    JS — whatIf (src/pages/operator/views.js:496)
-  [P | Đúng lớp] +applyRecommendations(simulationId: String, selectedList: List<Recommendation>, operatorId: String): List<CommandResult>
-    JS — static RecommendationService.applyRecommendations (src/application/operator.js:752); RecommendationService.handleRecommendation (src/application/operator.js:740)
-    Áp dụng đơn lẻ/nhóm, kiểm tra lại và có đường xử lý bù. Giao diện nhận thông báo tóm tắt thay vì danh sách kết quả lệnh, và xử lý bù sau phát lệnh cần thao tác Operator.
-  [P | Đúng lớp] +rejectRecommendations(simulationId: String, reason: String, operatorId: String): void
-    JS — static RecommendationService.rejectRecommendations (src/application/operator.js:823)
-    Từ chối từng mục. UI dùng lý do mặc định, không có nhập lý do hoặc từ chối cả nhóm.
-  [P | Ánh xạ] -revalidateActions(actionList: List<Recommendation>, latestState: NetworkSnapshot): List<ValidationIssue>
-    JS — RecommendationService.applyRecommendations (src/application/operator.js:752); RecommendationService.dispatchCommands (src/application/operator.js:829)
-    Dùng kiểm tra trực tiếp của nghiệp vụ trên bản nháp. Dừng ở lỗi đầu tiên, không trả danh sách sai lệch.
-  [P | Đúng lớp] -dispatchCommands(actionList: List<Recommendation>): List<CommandResult>
-    JS — static RecommendationService.dispatchCommands (src/application/operator.js:829)
-    Chuyển vào các luồng điều phối, sạc và thông báo, giữ ID lệnh/kế hoạch hoặc số người nhận. Không có danh sách CommandResult chung cho mọi hành động.
-  [P | Đúng lớp] -compensateCommands(results: List<CommandResult>): List<CommandResult>
-    JS — static RecommendationService.compensateCommands (src/application/operator.js:784)
-    Có hủy chờ, yêu cầu thu hồi, gửi thông báo thay thế, chuyển chờ đối soát. Là nhánh do Operator kích hoạt và không trả danh sách kết quả bù từng lệnh.
+    JS — static RecommendationService.generateRecommendations (src/application/operator.js:789)
+  [C | Đúng lớp] +getRecommendations(simulationId: String): List<Recommendation>
+    JS — static RecommendationService.getRecommendations (src/application/operator.js:785); whatIf (src/pages/operator/views.js:505)
+  [C | Đúng lớp] +applyRecommendations(simulationId: String, selectedList: List<Recommendation>, operatorId: String): List<CommandResult>
+    JS — static RecommendationService.applyRecommendations (src/application/operator.js:882); RecommendationService.compensateFailedPlan (src/application/operator.js:947); processPendingEffects (src/application/pending-effects.js:15)
+    Kiểm tra toàn bộ lựa chọn trên bản nháp rồi mới commit. Trả kết quả kèm ID lệnh và tự xử lý bù với lỗi lệnh sạc liên quan sau commit.
+  [C | Đúng lớp] +rejectRecommendations(simulationId: String, reason: String, operatorId: String): void
+    JS — static RecommendationService.rejectRecommendations (src/application/operator.js:956)
+    Hỗ trợ từ chối một hoặc nhiều mục kèm lý do, người thao tác và thời điểm.
+  [C | Đúng lớp] -revalidateActions(actionList: List<Recommendation>, latestState: NetworkSnapshot): List<ValidationIssue>
+    JS — static RecommendationService.revalidateActions (src/application/operator.js:861)
+    Thu thập lỗi của từng mục trên bản nháp. Cả nhóm giữ nguyên khi có lỗi trước phát lệnh.
+  [C | Đúng lớp] -dispatchCommands(actionList: List<Recommendation>): List<CommandResult>
+    JS — static RecommendationService.dispatchCommands (src/application/operator.js:967); RecommendationService.getCommandResults (src/application/operator.js:894); recommendationResults (src/pages/operator/views.js:666)
+    Trả kết quả có mã lệnh điều phối, lệnh sạc hoặc thông báo. Màn duyệt đọc trạng thái hiện thời sau commit.
+  [C | Đúng lớp] -compensateCommands(results: List<CommandResult>): List<CommandResult>
+    JS — static RecommendationService.compensateCommands (src/application/operator.js:908); RecommendationService.compensateFailedPlan (src/application/operator.js:947)
+    Trả kết quả bù, hủy lệnh còn chờ và chuyển trường hợp chưa chắc chắn sang đối soát. Giữ thao tác bù thủ công đã có.
 
-NotificationService — src/domain/notifications.js:5 — 2/2 phương thức đúng lớp
-  [P | Đúng lớp] +sendNotification(recipientIds: List<String>, type: NotificationType, title: String, content: String, relatedId: String): List<Notification>
-    JS — static NotificationService.sendNotification (src/domain/notifications.js:6)
-    Phương thức tạo một thông báo cho đối tượng hoặc vai trò. Luồng chuyển hướng lặp theo nhóm Sinh viên; API chung nhận danh sách người nhận và trả danh sách theo UML chưa có.
+NotificationService — src/domain/notifications.js:11 — 2/2 phương thức đúng lớp
+  [C | Đúng lớp] +sendNotification(recipientIds: List<String>, type: NotificationType, title: String, content: String, relatedId: String): List<Notification>
+    JS — static NotificationService.sendNotification (src/domain/notifications.js:12)
+    Nhận danh sách ID người nhận, lọc ID hợp lệ, loại trùng và trả danh sách thông báo đã tạo.
   [C | Đúng lớp] -checkRateLimit(userId: String, type: NotificationType): boolean
-    JS — static NotificationService.checkRateLimit (src/domain/notifications.js:12)
+    JS — static NotificationService.checkRateLimit (src/domain/notifications.js:18)
 
-Recommendation — src/domain/entities.js:257 — 1/1 phương thức đúng lớp
+Recommendation — src/domain/entities.js:300 — 1/1 phương thức đúng lớp
   [C | Đúng lớp] +updateStatus(newStatus: RecommendationStatus): void
-    JS — Recommendation.updateStatus (src/domain/entities.js:260)
+    JS — Recommendation.updateStatus (src/domain/entities.js:303)
 
 AuditLogService — src/application/operator.js:43 — 1/1 phương thức đúng lớp
-  [P | Đúng lớp] +saveAuditLog(operatorId: String, action: AuditAction, targetId: String, details: String): AuditLog
-    JS — static AuditLogService.saveAuditLog (src/application/operator.js:44)
-    Có lưu actor, đích, thời gian và kết quả của nhiều thao tác. Ngoại lệ ném ra trước commit có thể không có dòng audit tương ứng.
+  [C | Đúng lớp] +saveAuditLog(operatorId: String, action: AuditAction, targetId: String, details: String): AuditLog
+    JS — static AuditLogService.saveAuditLog (src/application/operator.js:44); AuditLogService.runOperatorTransaction (src/application/operator.js:52)
+    Ghi thành công hoặc lỗi. Lỗi nghiệp vụ được ghi bằng giao dịch riêng sau rollback khi localStorage còn ghi được.
 
-SimulationScenario — src/domain/entities.js:263 — 0/0 phương thức đúng lớp
+SimulationScenario — src/domain/entities.js:306 — 0/0 phương thức đúng lớp
   UML chỉ khai báo thuộc tính.
 
-Notification — src/domain/entities.js:267 — 0/0 phương thức đúng lớp
+Notification — src/domain/entities.js:310 — 0/0 phương thức đúng lớp
   UML chỉ khai báo thuộc tính.
 
-AuditLog — src/domain/entities.js:271 — 0/0 phương thức đúng lớp
+AuditLog — src/domain/entities.js:314 — 0/0 phương thức đúng lớp
   UML chỉ khai báo thuộc tính.

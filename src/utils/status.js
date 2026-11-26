@@ -56,8 +56,8 @@ export const ACTIVE_CHARGING = Object.freeze([
 export const DISPATCH_ORDER_STATUS = enumOf('PENDING', 'IN_TRANSIT', 'COMPLETED', 'PARTIALLY_COMPLETED', 'CANCELLED', 'FAILED');
 
 // --- Sự cố và bảo trì (UC11) ---
-export const INCIDENT_STATUS = enumOf('ALERT', 'ISOLATING', 'PENDING_CHECK', 'ISOLATED', 'IN_REPAIR', 'RESOLVED');
-export const WORK_ORDER_STATUS = enumOf('PENDING_RESEND', 'SENT', 'DONE');
+export const INCIDENT_STATUS = enumOf('ALERT', 'ISOLATING', 'PENDING_CHECK', 'ISOLATED', 'IN_REPAIR', 'RESOLVED', 'CANCELLED');
+export const WORK_ORDER_STATUS = enumOf('PENDING_RESEND', 'SENT', 'IN_PROGRESS', 'DONE');
 
 // --- Mô phỏng và khuyến nghị (UC12, UC13) ---
 export const SIMULATION_STATUS = enumOf('DRAFT', 'RUNNING', 'COMPLETED', 'FAILED');

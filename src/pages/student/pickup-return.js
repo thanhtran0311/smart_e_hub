@@ -12,6 +12,8 @@ import {
 } from "../../components/ui.js";
 import { slotAvailable } from "../../domain/resources.js";
 import { ChargingSessionService } from "../../application/charging.js";
+import { TripService } from "../../application/student.js";
+import { Trip } from "../../domain/entities.js";
 
 const hidden = (key, value) =>
   '<input type="hidden" name="' + esc(key) + '" value="' + esc(value) + '">';
@@ -69,7 +71,10 @@ function pickupCard(s, r) {
               '">',
           ) +
           submit("Bắt đầu nhận xe", "primary", "unlock"),
-      ) + button("Hủy giữ xe", "cancelBooking", params, "secondary");
+      ) + button("Hủy giữ xe", "cancelBooking", params, "secondary") +
+      '<details><summary>Ghi lý do hủy</summary>' + form("cancelBooking", identity +
+        field("Lý do hủy", '<input name="reason" required maxlength="240">') +
+        submit("Hủy và lưu lý do", "secondary")) + "</details>";
   } else {
     action = pickupConfirmation(s, r, params, identity);
     action +=
@@ -143,6 +148,7 @@ function journeyCard(s, t) {
           "Mã ô trả",
           '<input required name="slotId" value="' + esc(t.returnSlotId) + '">',
         ) +
+        field("Cảm biến chốt trả", select("dockEvidence", [["occupied", "Xác nhận xe đã vào chốt"], ["missing", "Chưa có bằng chứng"]])) +
         outcome() +
         submit("Xác minh chốt & khóa xe", "success", "lock"),
     ) + '<details><summary>Đổi chốt trả xe</summary>' +
@@ -166,6 +172,7 @@ function journeyCard(s, t) {
             ["true", "Cần kiểm tra kỹ thuật"],
           ]),
         ) +
+        field("Mô tả sự cố (tùy chọn)", '<input name="issueDescription" maxlength="240">') +
         submit("Đối soát & hoàn tất chuyến", "success", "check"),
     );
   }
@@ -184,7 +191,7 @@ function journeyCard(s, t) {
   );
 }
 
-export function tripView(s, user) {
+export function tripView(s, user, now = Date.now()) {
   const reservations = s.reservations
     .filter((r) => r.userId === user.id && r.type === "VEHICLE")
     .slice()
@@ -227,9 +234,16 @@ export function tripView(s, user) {
             esc(r.vehicleId) +
             "</span>" +
             badge(r.status) +
-            "</div>",
+            "</div>" + (r instanceof Trip && r.status === "COMPLETED"
+              ? completedTripDetails(TripService.getTripSummary(s, r.id, user, now)) : ""),
         )
         .join("") || empty("Chưa có hành trình."),
     )
   );
+}
+
+function completedTripDetails(trip) {
+  return '<details><summary>' + esc(trip.durationMinutes) + ' phút · Chi tiết chuyến</summary><p class="muted">' +
+    esc(trip.pickupHubId) + ' → ' + esc(trip.returnHubId || "—") + ' · ' + time(trip.start) + ' – ' + time(trip.end) +
+    (trip.issueDescription ? '<br>' + esc(trip.issueDescription) : '') + '</p></details>';
 }

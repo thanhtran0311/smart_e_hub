@@ -9,6 +9,9 @@ import {
   chargeReading,
   getNearbyHubs,
   validateBooking,
+  ParkingService,
+  ChargingScheduleService,
+  TripService,
 } from "../../src/application/student.js";
 
 const epoch = Date.UTC(2026, 10, 25, 1);
@@ -121,7 +124,7 @@ test("UC03 chỉ mở khóa xe đang sạc sau xác nhận ngắt điện và r�
 
 test("UC04 sau khi khóa, lỗi ghi lúc hoàn tất vẫn giữ bằng chứng cho lần đối soát lại", async () => {
   let fail = false;
-  const { store, run } = await setup({
+  const { store, run, advance } = await setup({
     getItem: () => null,
     setItem: () => {
       if (fail) throw Error("disk");
@@ -136,7 +139,12 @@ test("UC04 sau khi khóa, lỗi ghi lúc hoàn tất vẫn giữ bằng chứng 
   run("leaveSlot", end);
   const dock = run("requestReturn", end);
   assert.throws(() => run("lockReturn", { ...end, slotId: "P-00" }), /chốt/);
+  assert.throws(() => run("lockReturn", { ...end, slotId: dock.returnSlotId, dockEvidence: "missing" }), /Cảm biến/);
+  advance(3);
   run("lockReturn", { ...end, slotId: dock.returnSlotId });
+  const event = store.state.telemetry.at(-1);
+  assert.equal(event.source, "RETURN_DOCK");
+  assert.equal(event.eventId, store.state.trips[0].parkingEvidence.eventId);
   fail = true;
   assert.throws(() => run("finishReturn", end), /lưu/);
   assert.equal(store.state.trips[0].status, "PENDING_VERIFICATION");
@@ -145,12 +153,48 @@ test("UC04 sau khi khóa, lỗi ghi lúc hoàn tất vẫn giữ bằng chứng 
     trip.id,
   );
   fail = false;
-  run("finishReturn", end);
+  run("finishReturn", { ...end, issueDescription: "Tay phanh lỏng" });
   assert.equal(store.state.trips[0].status, "COMPLETED");
+  assert.equal(store.state.trips[0].issueDescription, "Tay phanh lỏng");
+  assert.equal(TripService.getTripSummary(store.state, trip.id, store.user, store.now()).durationMinutes, 3);
+  assert.equal(store.state.incidents.at(-1).reason, "Tay phanh lỏng");
   assert.equal(
     store.state.vehicles.find((v) => v.id === "E-102").hubId,
     "H-02",
   );
+});
+
+test("UC02 hủy giữ xe lưu lý do và hết hạn sinh đúng một thông báo", async () => {
+  const { store, run, advance } = await setup();
+  const first = run("bookVehicle", { vehicleId: "E-102", expectedVersion: 1 });
+  run("cancelBooking", { reservationId: first.id, reason: "Đổi lịch học" });
+  assert.equal(store.state.reservations.find((row) => row.id === first.id).cancelReason, "Đổi lịch học");
+  const next = run("bookVehicle", { vehicleId: "E-102", expectedVersion: store.state.vehicles[0].version });
+  advance(15);
+  advance(1);
+  assert.equal(store.state.reservations.find((row) => row.id === next.id).status, "EXPIRED");
+  const notices = store.state.notifications.filter((row) => row.relatedId === next.id);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].userId, store.user.id);
+});
+
+test("UC05–06 xem trước khung giờ không giữ cọc, lọc đầu nối và nhả cổng khi hủy", async () => {
+  const { store, run } = await setup();
+  const request = { slotId: "P-01-14", vehicleId: "PV-01", start: epoch, end: epoch + 30 * minute, expectedVersion: 1 };
+  const before = store.state;
+  assert.equal(ParkingService.checkAvailability(before, request, store.user, epoch).slot.id, request.slotId);
+  assert.equal(store.state, before);
+  const parking = run("bookParking", request);
+  store.transaction((state) => { state.ports.find((row) => row.id === "CHG-01-03").connector = "CCS"; });
+  assert.ok(!ChargingScheduleService.getChargers(store.state, "H-01", "TYPE_2").some((row) => row.id === "CHG-01-03"));
+  const charging = { ...request, reservationId: parking.id, portId: "CHG-01-02" };
+  assert.equal(ChargingScheduleService.checkAvailability(store.state, charging, store.user, epoch).port.id, charging.portId);
+  const schedule = run("bookCharging", charging);
+  const port = () => store.state.ports.find((row) => row.id === charging.portId);
+  assert.equal(port().reservedScheduleId, schedule.id);
+  run("cancelCharging", { scheduleId: schedule.id });
+  assert.equal(port().reservedScheduleId, null);
+  assert.equal(port().status, "AVAILABLE");
 });
 
 test("UC05 ghi đơn lỗi sau bước giữ cọc không làm thay đổi ví hoặc tạo đơn", async () => {

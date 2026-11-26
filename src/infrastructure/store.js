@@ -5,6 +5,7 @@ import { cloneOperationalState, hydrateOperationalState } from "./operational-sn
 const key = "ehub_state";
 const sessionKey = "ehub_session_user";
 const schema = 1;
+const mockSsoPrefix = "mock-vnu-sso:";
 
 export const seedFiles = {
   config: "config",
@@ -73,6 +74,24 @@ export class AuthService {
     if (!(user instanceof User ? user.hasPermission(role) : user?.roles.includes(role)))
       throw new Error("Tài khoản chưa có quyền thực hiện thao tác này.");
     return user;
+  }
+
+  static authenticateVnuSso(ssoToken, users) {
+    const userId = typeof ssoToken === "string" && ssoToken.startsWith(mockSsoPrefix)
+      ? ssoToken.slice(mockSsoPrefix.length) : null;
+    const user = users.find((row) => row.id === userId);
+    if (!user) throw new Error("Token VNU-SSO mô phỏng không hợp lệ.");
+    return user;
+  }
+
+  static validateSession(token, state) {
+    if (typeof token !== "string") return false;
+    const userId = token.startsWith(mockSsoPrefix) ? token.slice(mockSsoPrefix.length) : token;
+    return userId === state.userId && state.users.some((user) => user.id === userId);
+  }
+
+  static logout(store) {
+    store.logout();
   }
 }
 
@@ -148,10 +167,22 @@ export class OperationalStore {
   }
 
   get state() {
+    return this.getRealtimeNetworkStatus();
+  }
+
+  getRealtimeNetworkStatus() {
     return this.#state;
   }
+
+  readConfig(key, hubId) {
+    const config = this.state.config;
+    if (key === "HUB_POWER_LIMIT" || key === "hubPowerLimitKw")
+      return hubId == null ? config.hubPowerLimitKw : config.hubPowerLimitKw[hubId];
+    return config.params[key] ?? config[key];
+  }
   get user() {
-    return this.state.users.find((row) => row.id === this.state.userId) ?? null;
+    const { userId, users } = this.state;
+    return AuthService.validateSession(userId, this.state) ? lookup(users, userId) : null;
   }
   now() {
     return this.#clock() + this.state.offsetMs;
@@ -180,6 +211,10 @@ export class OperationalStore {
   }
 
   transaction(change) {
+    return this.beginTransaction(change);
+  }
+
+  beginTransaction(change) {
     this.#requireLock();
     if (this.#writing) throw new Error("Giao dịch lồng nhau không hợp lệ.");
     this.#writing = true;
@@ -228,7 +263,8 @@ export class OperationalStore {
       username,
       password,
     );
-    if (role) AuthService.requireRole(lookup(this.state.users, userId), role);
+    const account = AuthService.authenticateVnuSso(mockSsoPrefix + userId, this.state.users);
+    if (role) AuthService.requireRole(account, role);
     this.#setUserId(userId);
     return lookup(this.state.users, userId);
   }

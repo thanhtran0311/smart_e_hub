@@ -58,11 +58,12 @@ function outcome() {
 }
 
 function renderParkingForm(s, user, now, ui) {
-  const hub = s.hubs.find((x) => x.id === ui.parkingHub) || s.hubs[0];
+  const hubs = ParkingService.getHubs(s);
+  const hub = hubs.find((x) => x.id === ui.parkingHub) || hubs[0];
   const cars = ParkingService.getVehicles(s, user.id);
   const picker = select(
     "parkingHub",
-    s.hubs.map((h) => [h.id, h.name]),
+    hubs.map((h) => [h.id, h.name]),
     hub.id,
   ).replace("<select", '<select data-setting="parkingHub"');
   const slots = s.slots.filter(
@@ -103,12 +104,13 @@ function renderParkingForm(s, user, now, ui) {
           ),
         ) +
         windowFields(start, start + 3600000) +
-        submit("Giữ chỗ · " + money(s.config.params.PARKING_DEPOSIT_VND)),
+        submit("Giữ chỗ · " + money(s.config.params.PARKING_DEPOSIT_VND)) +
+        '<button type="submit" class="btn secondary" data-submit-action="previewParking">Kiểm tra khung giờ</button>',
     )
   );
 }
 
-function parkingRecord(s, r, now) {
+function parkingRecord(s, r, now, canBookCharging) {
   const params = { reservationId: r.id };
   let actions = "";
   if (booked.includes(r.status))
@@ -117,14 +119,11 @@ function parkingRecord(s, r, now) {
       button("Hủy đặt chỗ", "cancelParking", params, "secondary");
   if (r.status === "CHECKED_IN")
     actions = button("Xác nhận xe rời ô", "leaveParking", params, "secondary");
-  const ports = ChargingScheduleService.getChargers(s, r.hubId);
+  const vehicle = s.privateVehicles.find((item) => item.id === r.vehicleId);
+  const ports = ChargingScheduleService.getChargers(s, r.hubId, vehicle?.connector);
   const free = ports.find((p) => p.status === "AVAILABLE");
   let book = "";
-  if (
-    ports.length &&
-    r.end > now &&
-    (r.status === "CHECKED_IN" || booked.includes(r.status))
-  ) {
+  if (ports.length && canBookCharging) {
     book =
       "<details><summary>Đăng ký lịch sạc theo chỗ đỗ</summary>" +
       form(
@@ -134,7 +133,8 @@ function parkingRecord(s, r, now) {
             "Cổng sạc",
             select(
               "portId",
-              ports.map((p) => [p.id, p.id + " · " + p.powerKw + " kW", p.version]),
+              ports.map((p) => [p.id, p.id + " · " + p.powerKw + " kW" +
+                (p.reservedScheduleId ? " · Đang có lịch giữ" : ""), p.version]),
               free?.id,
             ),
           ) +
@@ -142,7 +142,8 @@ function parkingRecord(s, r, now) {
             Math.max(Math.floor(now / 60000) * 60000, r.start),
             r.end,
           ) +
-          submit("Xác nhận lịch sạc"),
+          submit("Xác nhận lịch sạc") +
+          '<button type="submit" class="btn secondary" data-submit-action="previewCharging">Kiểm tra khung giờ</button>',
       ) +
       "</details>";
   }
@@ -213,6 +214,7 @@ function chargingRecord(s, c, now) {
   if (c.status === "STOPPED")
     actions = button("Xác nhận đã rút đầu cắm", "unplugCharger", payload);
   const session = s.sessions.find((x) => x.scheduleId === c.id);
+  const port = s.ports.find((item) => item.id === c.portId);
   let reading = "";
   if (session) {
     const { energyKwh, cost } = ChargingSessionService.chargeReading(s, session, now);
@@ -224,7 +226,11 @@ function chargingRecord(s, c, now) {
       " kWh · " +
       money(cost) +
       (session.status === "CHARGING" ? " tạm tính" : "") +
-      "</p>";
+      "</p>" + (session.batteryPct != null || session.measuredPowerKw != null
+        ? '<p class="muted">' + esc([
+          session.batteryPct != null ? "Pin " + session.batteryPct + "%" : "",
+          session.measuredPowerKw != null ? "Đo được " + session.measuredPowerKw + " kW" : "",
+        ].filter(Boolean).join(" · ")) + "</p>" : "");
   }
   const error = c.operationError
     ? '<p class="error-line">' + esc(c.operationError) + "</p>"
@@ -233,7 +239,7 @@ function chargingRecord(s, c, now) {
     '<article class="record"><div class="section-head"><strong>' +
     esc(c.portId) +
     "</strong>" +
-    badge(c.status) +
+    badge(c.status === "STOPPED" && port?.status === "CHARGED_FULL" ? "CHARGED_FULL" : c.status) +
     '</div><p class="muted">' +
     time(c.start) +
     " – " +
@@ -248,6 +254,7 @@ function chargingRecord(s, c, now) {
 }
 
 export function parkingView(s, user, now, ui) {
+  const activeBookings = new Set(ChargingScheduleService.getActiveBookings(s, user.id, now).map((row) => row.id));
   const records = s.reservations
     .filter((r) => r.type === "PARKING" && r.userId === user.id)
     .slice()
@@ -265,7 +272,7 @@ export function parkingView(s, user, now, ui) {
     card("Đặt chỗ đỗ xe", renderParkingForm(s, user, now, ui)) +
     card(
       "Chỗ đỗ của tôi",
-      records.map((r) => parkingRecord(s, r, now)).join("") ||
+      records.map((r) => parkingRecord(s, r, now, activeBookings.has(r.id))).join("") ||
         empty("Chưa có lịch đỗ xe."),
     ) +
     card(

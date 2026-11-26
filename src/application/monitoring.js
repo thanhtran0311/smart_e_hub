@@ -1,5 +1,5 @@
-import { hubMetrics, networkSnapshot } from "../domain/resources.js";
-import { NotificationService } from "../domain/notifications.js";
+import { alertsForHubs, hubMetrics, networkSnapshot } from "../domain/resources.js";
+import { appendNotification } from "../domain/notifications.js";
 import { NOTIFICATION_TYPE, ROLE } from "../utils/status.js";
 
 const reportColumns = [
@@ -9,7 +9,15 @@ const reportColumns = [
 
 export class MonitoringService {
   static getNetworkOverviewSnapshot(state, now) {
-    return networkSnapshot(state, now);
+    return networkSnapshot(state, now, MonitoringService.checkNetworkAnomalies);
+  }
+
+  static evaluateHubLoadStatus(state, hubId, now) {
+    return hubMetrics(state, hubId, now).loadStatus;
+  }
+
+  static checkNetworkAnomalies(hubs) {
+    return alertsForHubs(hubs);
   }
 
   static exportNetworkReport(snapshot, format) {
@@ -25,7 +33,7 @@ export class MonitoringService {
       if (!metrics.online || Boolean(hub.rebalanceAlertActive) === metrics.needsRebalance) continue;
       hub.rebalanceAlertActive = metrics.needsRebalance;
       if (metrics.needsRebalance)
-        NotificationService.sendNotification(state, {
+        appendNotification(state, {
           target: ROLE.OPERATOR, type: NOTIFICATION_TYPE.WARNING, relatedId: hub.id,
           title: "Cảnh báo thiếu xe khả dụng",
           message: hub.name + " còn " + metrics.availableVehicles + " xe khả dụng. Kiểm tra phương án điều phối.",

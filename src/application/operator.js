@@ -13,12 +13,12 @@ import {
   chargingWindowAvailable,
   parkingWindowAvailable,
   parkedVehicleReady,
-  releaseVehicleHold,
   usable,
 } from "../domain/student-rules.js";
-import { classifyAndPrioritize, recordIncident } from "../domain/incidents.js";
+import { classifyAndPrioritize, incidentSeverities, recordIncident } from "../domain/incidents.js";
 import { NotificationService } from "../domain/notifications.js";
 import { TelemetryService } from "./telemetry.js";
+import { ReservationService } from "./student.js";
 import { SimulationService } from "./simulation.js";
 import { ChargingSessionService } from "./charging.js";
 import { deviceResult } from "./device-control.js";
@@ -41,12 +41,27 @@ const byId = (rows, id) => {
 };
 
 export class AuditLogService {
-  static saveAuditLog(state, ctx, action, targetId, message) {
+  static saveAuditLog(state, ctx, action, targetId, message, result = "SUCCESS") {
     const entry = new AuditLog({
-      id: uid("LOG"), userId: ctx.user.id, at: ctx.now, action, targetId, message,
+      id: uid("LOG"), userId: ctx.user.id, at: ctx.now, action, targetId, message, result,
     });
     state.audit.push(entry);
     return entry;
+  }
+
+  static runOperatorTransaction(store, user, action, payload, change) {
+    try {
+      return store.transaction(change);
+    } catch (error) {
+      // The failed operation has already rolled back. An audit write is a separate commit.
+      try {
+        store.transaction((state, now) => AuditLogService.saveAuditLog(state, { user, now }, action,
+          payload.id || payload.hubId || payload.targetId || payload.destId || payload.scenarioId, error.message, "FAILURE"));
+      } catch {
+        // Preserve the original error when storage is also unavailable for auditing.
+      }
+      throw error;
+    }
   }
 }
 
@@ -114,10 +129,11 @@ export class DispatchService {
       createdAt: now,
       items: [],
     });
+    const destination = byId(s.hubs, p.destId);
+    const reserved = destination.reserveInboundSpaces(live.slots, ids.length, order.id);
     ids.forEach((id, i) => {
       const v = byId(s.vehicles, id),
-        slot = live.slots[i];
-      slot.markReserved(order.id);
+        slot = reserved[i];
       touch(slot, now);
       order.items.push({
         vehicleId: id,
@@ -261,10 +277,15 @@ export class DispatchService {
     touch(x, now);
     i.status = arrived ? "COMPLETED" : "FAILED";
     i.receivedAt = now;
-    if (!o.items.some((i) => i.status === "IN_TRANSIT")) o.complete(now);
+    DispatchService.completeDispatchOrder(o, now);
     return arrived
       ? "Đã xác nhận bàn giao xe."
       : "Đã ghi nhận xe chưa bàn giao và chờ đối soát.";
+  }
+
+  static completeDispatchOrder(order, now) {
+    if (order.status === "IN_TRANSIT" && !order.items.some((item) => item.status === "IN_TRANSIT"))
+      order.complete(now);
   }
 }
 
@@ -428,8 +449,18 @@ function assetById(s, id) {
 }
 
 export class IncidentService {
+  static syncDashboard(state) {
+    const closed = (incident) => ["RESOLVED", "CANCELLED"].includes(incident.status);
+    const severities = Object.keys(incidentSeverities);
+    return state.incidents.toSorted((a, b) =>
+      Number(closed(a)) - Number(closed(b)) ||
+      severities.indexOf(b.severity || "MEDIUM") - severities.indexOf(a.severity || "MEDIUM") ||
+      b.createdAt - a.createdAt);
+  }
+
   static handleIncident(s, action, p, { now }) {
     if (action === "open") return IncidentService.receiveAlert(s, p, now);
+    if (action === "resendPending") return IncidentService.resendPendingWorkOrders(s, now);
 
     const incident = byId(s.incidents, p.id);
     const asset = assetById(s, incident.targetId);
@@ -441,7 +472,11 @@ export class IncidentService {
       case "isolate":
         return IncidentService.isolateResource(s, incident, asset, p, now);
       case "work":
-        return IncidentService.sendWorkOrder(s, incident, asset, p, now);
+        return IncidentService.sendWorkOrder(s, incident, p, now);
+      case "workInProgress":
+        return IncidentService.markWorkInProgress(s, incident, now);
+      case "cancel":
+        return IncidentService.cancelIncident(s, incident, asset, p, now);
       case "resolve":
         return IncidentService.resolveIncident(s, incident, asset, now);
       default:
@@ -451,7 +486,7 @@ export class IncidentService {
   }
 
   static receiveAlert(s, p, now) {
-    const incident = recordIncident(s, p.targetId, p.reason, now);
+    const incident = recordIncident(s, p.targetId, p.reason, now, "OPERATOR");
     return (
       "Hồ sơ " +
       incident.id +
@@ -460,7 +495,7 @@ export class IncidentService {
   }
 
   static classifyAndPrioritize(s, i, p, now) {
-    check(i.status !== "RESOLVED", "Hồ sơ sự cố đã đóng.");
+    check(!["RESOLVED", "CANCELLED"].includes(i.status), "Hồ sơ sự cố đã đóng.");
     classifyAndPrioritize(i, p.category, p.severity);
     const workOrder = s.workOrders.find((row) => row.incidentId === i.id);
     if (workOrder) workOrder.priority = i.severity;
@@ -470,11 +505,16 @@ export class IncidentService {
 
   static stopCharging(s, i, x, p, now) {
     const schedule = s.schedules.find((row) => row.portId === x.id && row.status === "CHARGING");
-    check(i.status !== "RESOLVED" && schedule, "Sự cố này không có phiên đang cấp điện.");
+    check(!["RESOLVED", "CANCELLED"].includes(i.status) && schedule, "Sự cố này không có phiên đang cấp điện.");
     const result = ChargingSessionService.deenergize(s, schedule, now, p.outcome);
     i.lastControlId = result.lastControlId;
     i.markPendingCheck();
+    if (x.markPendingCheck && x.inspectionStatus !== "FAULTED") touch(x.markPendingCheck(), now);
     return result.operationError || "Đã xác nhận ngắt điện. Chờ người dùng rút cáp trước khi cách ly.";
+  }
+
+  static requestControl(state, incident, asset, command, outcome, now) {
+    return deviceResult(state, incident, asset, command, outcome, now);
   }
 
   static isolateResource(s, i, x, p, now) {
@@ -502,36 +542,42 @@ export class IncidentService {
     const command = s.ports.includes(x) ? CONTROL_COMMAND.DENY_POWER : CONTROL_COMMAND.LOCK;
     const outcome = (p.outcome || "ok").toLowerCase();
     const control = !busy && online && !x.sensorOffline && !s.slots.includes(x)
-      ? deviceResult(s, i, x, command, outcome, now)
+      ? IncidentService.requestControl(s, i, x, command, outcome, now)
       : null;
     if (busy || x.sensorOffline || !online || outcome !== "ok" || (control && control.result !== CONTROL_RESULT.DONE)) {
-      i.markPendingCheck();
+      i.deferIsolation();
+      if (x.markPendingCheck && x.inspectionStatus !== "FAULTED") touch(x.markPendingCheck(), now);
       return busy
         ? "Đã chặn cấp phát. Hãy kết thúc phiên, rút cáp hoặc xác minh tài nguyên tại chỗ trước khi cách ly."
         : "Thiếu phản hồi thiết bị. Đang chờ xác minh an toàn.";
     }
     i.markIsolated(x.status);
+    if (x.markFaulted) x.markFaulted();
     x.status = "OUT_OF_SERVICE";
     touch(x, now);
     return "Thiết bị xác nhận an toàn. Đã cách ly tài nguyên.";
   }
 
-  static sendWorkOrder(s, i, x, p, now) {
+  static createWorkOrder(state, incident, assignedUnit, now) {
+    const existing = state.workOrders.find((row) => row.incidentId === incident.id);
+    if (existing) return existing;
+    const teamId = assignedUnit || state.teams.find((team) => team.type === "MAINTENANCE")?.id;
+    check(state.teams.some((team) => team.id === teamId && team.type === "MAINTENANCE"), "Đơn vị bảo trì không hợp lệ.");
+    const order = new WorkOrder({
+      id: uid("WO"), incidentId: incident.id, targetId: incident.targetId, teamId,
+      priority: incident.severity || "MEDIUM", createdAt: now,
+    });
+    state.workOrders.push(order);
+    return order;
+  }
+
+  static sendWorkOrder(s, i, p, now) {
     check(
       ["ISOLATED", "IN_REPAIR"].includes(i.status),
       "Cần xác nhận cách ly trước khi gửi bảo trì.",
     );
-    let w = s.workOrders.find((w) => w.incidentId === i.id);
-    if (w?.status === "SENT") return "Phiếu " + w.id + " đã được tiếp nhận.";
-    if (!w) {
-      const teamId = p.teamId || s.teams.find((team) => team.type === "MAINTENANCE")?.id;
-      check(s.teams.some((team) => team.id === teamId && team.type === "MAINTENANCE"), "Đơn vị bảo trì không hợp lệ.");
-      w = new WorkOrder({
-        id: uid("WO"), incidentId: i.id, targetId: x.id, teamId,
-        priority: i.severity || "MEDIUM", createdAt: now,
-      });
-      s.workOrders.push(w);
-    }
+    const w = IncidentService.createWorkOrder(s, i, p.teamId, now);
+    if (["SENT", "IN_PROGRESS"].includes(w.status)) return "Phiếu " + w.id + " đã được tiếp nhận.";
     if (p.outcome === "TIMEOUT") w.markPendingResend();
     else w.markSent();
     if (w.status === "SENT") i.status = "IN_REPAIR";
@@ -542,6 +588,43 @@ export class IncidentService {
         ? " đã được tiếp nhận."
         : " chờ gửi lại với cùng mã.")
     );
+  }
+
+  static resendPendingWorkOrders(s, now) {
+    const results = [];
+    for (const order of s.workOrders.filter((row) => row.status === "PENDING_RESEND")) {
+      const incident = s.incidents.find((row) => row.id === order.incidentId);
+      if (!incident || !["ISOLATED", "IN_REPAIR"].includes(incident.status)) continue;
+      assetById(s, incident.targetId);
+      IncidentService.sendWorkOrder(s, incident, { outcome: "OK" }, now);
+      results.push(order.id);
+    }
+    return "Đã gửi lại " + results.length + " phiếu bảo trì đang chờ.";
+  }
+
+  static markWorkInProgress(s, incident, now) {
+    const order = s.workOrders.find((row) => row.incidentId === incident.id);
+    check(incident.status === "IN_REPAIR" && ["SENT", "IN_PROGRESS"].includes(order?.status),
+      "Phiếu bảo trì chưa được gửi hoặc hồ sơ đã đóng.");
+    if (order.status === "SENT") order.markInProgress(now);
+    return "Đã ghi nhận đang thực hiện phiếu " + order.id + ".";
+  }
+
+  static canCancel(s, incident) {
+    return incident.origin === "OPERATOR" && incident.status === "ISOLATING" &&
+      !incident.hasSystemAlert && !incident.lastControlId &&
+      !s.workOrders.some((row) => row.incidentId === incident.id) &&
+      ![...s.reservations, ...s.schedules].some((row) => row.status === "AFFECTED" && incident.affected?.includes(row.id));
+  }
+
+  static cancelIncident(s, incident, asset, payload, now) {
+    check(IncidentService.canCancel(s, incident), "Chỉ hủy hồ sơ thủ công trước cách ly và sau khi xử lý các đơn bị ảnh hưởng.");
+    const reason = String(payload.reason ?? "").trim().slice(0, 240) || "Vận hành viên hủy hồ sơ.";
+    incident.cancel(reason, now);
+    asset.blocked = incident.wasBlocked;
+    touch(asset, now);
+    touch(incident, now);
+    return "Đã hủy hồ sơ " + incident.id + ".";
   }
 
   static resolveIncident(s, i, x, now) {
@@ -559,6 +642,7 @@ export class IncidentService {
       "Cần xử lý các lịch bị ảnh hưởng trước khi đóng.",
     );
     x.blocked = false;
+    if (x.inspectionStatus) x.inspectionStatus = null;
     x.status =
       s.slots.includes(x) && x.vehicleId
         ? "OCCUPIED"
@@ -591,7 +675,8 @@ export class IncidentService {
         child.status = "CANCELLED";
         touch(child, now);
       }
-      b.status = "CANCELLED";
+      if (b.type === "VEHICLE") b.cancel("Hủy do sự cố tài nguyên.");
+      else b.cancel();
     } else {
       const key = b.portId
         ? "portId"
@@ -681,15 +766,14 @@ export class IncidentService {
         (v) =>
           v.reservationId === b.id &&
           (p.decision === "CANCELLED" || v.id !== b.vehicleId),
-      )) releaseVehicleHold(s, old, originalBooking, now);
+      )) ReservationService.reconcileVehicleHold(s, originalBooking, now, old);
     if (b.type === "PARKING") {
       for (const slot of s.slots.filter((row) => row.id === b.slotId || row.id === originalBooking.slotId))
         touch(slot, now);
     }
     b.remedyStatus = p.decision;
     touch(b, now);
-    NotificationService.sendNotification(s, {
-      userId: b.userId,
+    NotificationService.sendNotification(s, [b.userId], {
       title: "Đã xử lý đặt chỗ",
       message: b.id + " · " + p.decision,
     }, now);
@@ -698,8 +782,13 @@ export class IncidentService {
 }
 
 export class RecommendationService {
+  static getRecommendations(state, simulationId) {
+    return state.recommendations.filter((item) => item.scenarioId === simulationId);
+  }
+
   static generateRecommendations(s, p, ctx) {
     const scenario = SimulationService.runSimulation(s, p, ctx);
+    if (scenario.status === "FAILED") return "Mô phỏng thất bại: " + scenario.error;
     const { sourceId, destId, snapshot, forecast, durationMin } = scenario;
     const dest = byId(snapshot, destId);
     const preview = DispatchService.filterEligibleVehicles(s, sourceId, destId);
@@ -738,18 +827,21 @@ export class RecommendationService {
   }
 
   static handleRecommendation(s, action, p, ctx) {
-    if (action === "batch") return RecommendationService.applyRecommendations(s, p, ctx);
+    if (action === "batch") return RecommendationService.applyRecommendations(s, p, ctx).message;
+    if (action === "rejectBatch") return RecommendationService.rejectRecommendations(
+      RecommendationService.selectedRecommendations(s, p), p.reason, ctx,
+    );
 
     const recommendation = byId(s.recommendations, p.id);
     const scenario = byId(s.scenarios, recommendation.scenarioId);
-    if (action === "compensate") return RecommendationService.compensateCommands(s, recommendation, ctx);
+    if (action === "compensate") return RecommendationService.compensateCommands(s, recommendation, ctx).message;
     check(recommendation.status === "PENDING", "Khuyến nghị đã được xử lý.");
-    if (action === "reject") return RecommendationService.rejectRecommendations(recommendation, p.reason);
+    if (action === "reject") return RecommendationService.rejectRecommendations([recommendation], p.reason, ctx);
     check(action === "apply", "Thao tác khuyến nghị không hợp lệ.");
-    return RecommendationService.dispatchCommands(s, recommendation, scenario, ctx);
+    return RecommendationService.dispatchCommands(s, recommendation, scenario, ctx).message;
   }
 
-  static applyRecommendations(s, p, ctx) {
+  static selectedRecommendations(s, p) {
     const scenario = byId(s.scenarios, p.scenarioId);
     const ids = p.ids;
     check(
@@ -763,22 +855,54 @@ export class RecommendationService {
       ),
       "Có khuyến nghị đã thay đổi. Hãy kiểm tra lại.",
     );
-    // Validate the complete selection against a private draft before releasing any order.
-    const draft = cloneOperationalState(s);
+    return selected;
+  }
+
+  static revalidateActions(s, selected, ctx) {
+    let draft = cloneOperationalState(s);
+    const results = [], issues = [];
     for (const r of selected.toSorted(
       (a, b) =>
         Number(a.type === "REDISTRIBUTE") - Number(b.type === "REDISTRIBUTE"),
     )) {
-      const message = RecommendationService.handleRecommendation(draft, "apply", { id: r.id }, ctx),
-        checked = byId(draft.recommendations, r.id);
-      if (checked.status !== "APPLIED") {
-        AuditLogService.saveAuditLog(s, ctx, "recommendation.apply", r.id, message);
-        return "Đã dừng cả nhóm trước khi phát lệnh. " + message;
+      const candidate = cloneOperationalState(draft);
+      const checked = byId(candidate.recommendations, r.id);
+      const result = RecommendationService.dispatchCommands(candidate, checked, byId(candidate.scenarios, checked.scenarioId), ctx);
+      if (result.status !== "APPLIED") {
+        issues.push({ recommendationId: r.id, message: result.message });
+        continue;
       }
-      AuditLogService.saveAuditLog(draft, ctx, "recommendation.apply", r.id, message);
+      results.push(result);
+      AuditLogService.saveAuditLog(candidate, ctx, "recommendation.apply", r.id, result.message);
+      draft = candidate;
+    }
+    return { draft, results, issues };
+  }
+
+  static applyRecommendations(s, p, ctx) {
+    const selected = RecommendationService.selectedRecommendations(s, p);
+    const { draft, issues, results } = RecommendationService.revalidateActions(s, selected, ctx);
+    if (issues.length) {
+      for (const issue of issues)
+        AuditLogService.saveAuditLog(s, ctx, "recommendation.apply", issue.recommendationId, issue.message, "FAILURE");
+      return { issues, results: [], message: "Đã dừng cả nhóm trước khi phát lệnh. " + issues.map((issue) => issue.message).join(" · ") };
     }
     Object.assign(s, draft);
-    return "Đã áp dụng " + ids.length + " khuyến nghị đã chọn.";
+    return { issues, results, message: "Đã áp dụng " + selected.length + " khuyến nghị đã chọn." };
+  }
+
+  static getCommandResults(s, r) {
+    if (r.type === "REDISTRIBUTE") {
+      const order = s.orders.find((item) => item.id === r.orderId);
+      return order ? [{ id: order.id, status: order.assignmentStatus, message: order.status }] : [];
+    }
+    if (r.type === "RESCHEDULE_CHARGING" && r.planId)
+      return s.deviceCommands.filter((item) => item.planId === r.planId)
+        .map((item) => ({ id: item.id, status: item.result, message: item.message || item.targetId }));
+    if (r.type === "REDIRECT_USERS")
+      return s.notifications.filter((item) => item.relatedId === r.id)
+        .map((item) => ({ id: item.id, status: "DONE", message: item.title }));
+    return [];
   }
 
   static compensateCommands(s, r, ctx) {
@@ -810,20 +934,34 @@ export class RecommendationService {
       if (r.status === "PENDING_CHECK") r.note = "Đối soát các cổng đã nhận lệnh trước khi thay đổi nguồn điện.";
     } else {
       const recipients = s.notifications.filter((notification) => notification.relatedId === r.id).map((notification) => notification.userId);
-      for (const userId of recipients)
-        NotificationService.sendNotification(s, {
-          userId, type: NOTIFICATION_TYPE.INFO, relatedId: r.id,
-          title: "Thu hồi hướng dẫn di chuyển", message: "Thông báo thay thế khuyến nghị " + r.id,
-        }, ctx.now);
+      NotificationService.sendNotification(s, recipients, {
+        type: NOTIFICATION_TYPE.INFO, relatedId: r.id,
+        title: "Thu hồi hướng dẫn di chuyển", message: "Thông báo thay thế khuyến nghị " + r.id,
+      }, ctx.now);
       r.updateStatus("COMPENSATED");
     }
-    return r.note || "Đã thực hiện hành động bù.";
+    r.compensationResults = RecommendationService.getCommandResults(s, r);
+    return { results: r.compensationResults, message: r.note || "Đã thực hiện hành động bù." };
   }
 
-  static rejectRecommendations(r, reason) {
-    r.updateStatus("REJECTED");
-    r.reason = reason || "Vận hành viên từ chối";
-    return "Đã từ chối khuyến nghị.";
+  static compensateFailedPlan(s, request, now) {
+    if (![CONTROL_RESULT.FAILED, CONTROL_RESULT.TIMEOUT].includes(request.result)) return;
+    const r = s.recommendations.find((item) => item.planId === request.planId && item.status === "APPLIED");
+    if (!r) return;
+    const ctx = { user: { id: r.appliedBy ?? null }, now };
+    const result = RecommendationService.compensateCommands(s, r, ctx);
+    AuditLogService.saveAuditLog(s, ctx, "recommendation.compensate", r.id, result.message);
+  }
+
+  static rejectRecommendations(recommendations, reason, ctx) {
+    for (const r of recommendations) {
+      r.updateStatus("REJECTED");
+      r.reason = String(reason ?? "").trim().slice(0, 240) || "Vận hành viên từ chối";
+      r.rejectedBy = ctx.user.id;
+      r.rejectedAt = ctx.now;
+    }
+    return recommendations.length === 1 ? "Đã từ chối khuyến nghị."
+      : "Đã từ chối " + recommendations.length + " khuyến nghị.";
   }
 
   static dispatchCommands(s, r, scenario, ctx) {
@@ -853,12 +991,14 @@ export class RecommendationService {
         r.note = "Đã gửi " + sent.length + " thông báo theo giới hạn tần suất.";
       }
       r.updateStatus("APPLIED");
-      return "Đã kiểm tra hiện trạng và áp dụng khuyến nghị.";
+      r.appliedBy = ctx.user.id;
+      return { recommendationId: r.id, status: r.status, commands: RecommendationService.getCommandResults(s, r),
+        message: "Đã kiểm tra hiện trạng và áp dụng khuyến nghị." };
     } catch (error) {
       // All dispatch preconditions are checked before the first resource update.
       r.updateStatus("FAILED");
       r.note = error.message;
-      return "Dừng áp dụng: " + error.message;
+      return { recommendationId: r.id, status: r.status, commands: [], message: "Dừng áp dụng: " + error.message };
     }
   }
 }
@@ -896,13 +1036,15 @@ export function operatorCommand(state, action, payload, ctx) {
       message = RecommendationService.handleRecommendation(state, op, payload, ctx);
       break;
     case "telemetry":
-      check(op === "emit", "Lệnh telemetry không hợp lệ.");
-      message = TelemetryService.receiveTelemetry(state, payload, ctx);
+      check(["emit", "register"].includes(op), "Lệnh telemetry không hợp lệ.");
+      message = op === "emit" ? TelemetryService.receiveTelemetry(state, payload, ctx)
+        : "Đã đăng ký cảm biến " + TelemetryService.registerSensor(state, payload.hubId, payload.deviceId).id + ".";
       break;
     default:
       throw new Error("Chức năng vận hành không tồn tại.");
   }
   AuditLogService.saveAuditLog(state, ctx, action,
-    payload.id || payload.hubId || payload.targetId || payload.destId, message);
+    payload.id || payload.hubId || payload.targetId || payload.destId || payload.scenarioId, message,
+    /^(Dừng áp dụng|Đã dừng cả nhóm|Mô phỏng thất bại)/.test(message) ? "FAILURE" : "SUCCESS");
   return message;
 }

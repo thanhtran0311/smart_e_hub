@@ -2,11 +2,17 @@ import { uid } from "./resources.js";
 import { Notification } from "./entities.js";
 import { NOTIFICATION_TYPE, ROLE } from "../utils/status.js";
 
+export function appendNotification(state, message, now) {
+  const record = new Notification({ id: uid("NTF"), ...message, at: now });
+  state.notifications.push(record);
+  return record;
+}
+
 export class NotificationService {
-  static sendNotification(state, message, now) {
-    const record = new Notification({ id: uid("NTF"), ...message, at: now });
-    state.notifications.push(record);
-    return record;
+  static sendNotification(state, recipientIds, message, now) {
+    const known = new Set(state.users.map((user) => user.id));
+    return [...new Set(recipientIds)].filter((userId) => known.has(userId))
+      .map((userId) => appendNotification(state, { ...message, userId }, now));
   }
 
   static checkRateLimit(notifications, userId, type, cutoff) {
@@ -17,12 +23,13 @@ export class NotificationService {
   static notifyRedirect(state, title, message, relatedId, now) {
     const interval = (state.config.params.REDIRECT_NOTIFICATION_INTERVAL_SEC ?? 60) * 1000;
     const recipients = state.users.filter((user) => user.hasPermission(ROLE.STUDENT));
-    return recipients.filter((user) => !NotificationService.checkRateLimit(
+    const selected = recipients.filter((user) => !NotificationService.checkRateLimit(
       state.notifications, user.id, NOTIFICATION_TYPE.REDIRECT, now - interval,
-    )).map((user) => NotificationService.sendNotification(state, {
-      userId: user.id, title, message, relatedId, type: NOTIFICATION_TYPE.REDIRECT,
-    }, now));
+    )).map((user) => user.id);
+    return NotificationService.sendNotification(state, selected, {
+      title, message, relatedId, type: NOTIFICATION_TYPE.REDIRECT,
+    }, now);
   }
 }
 
-export const { sendNotification: appendNotification, notifyRedirect } = NotificationService;
+export const { notifyRedirect } = NotificationService;

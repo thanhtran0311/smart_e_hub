@@ -178,6 +178,11 @@ try {
       x.type === "PRIVATE" && x.hubId === "H-01" && x.status === "AVAILABLE",
   );
   await parking.locator("[name=slotId]").selectOption(slot.id);
+  const parkingCount = (await state()).reservations.length;
+  await parking.locator('[data-submit-action="previewParking"]').click();
+  await page.getByRole("dialog", { name: "Ô đỗ phù hợp" }).waitFor();
+  assert.equal((await state()).reservations.length, parkingCount);
+  await page.locator("dialog [data-dialog-close]").click();
   await send("bookParking");
   await btn("checkInParking").click();
   await btn("leaveParking").waitFor();
@@ -185,6 +190,11 @@ try {
   await panel("bookCharging")
     .locator("[name=portId]")
     .selectOption("CHG-01-02");
+  const scheduleCount = (await state()).schedules.length;
+  await panel("bookCharging").locator('[data-submit-action="previewCharging"]').click();
+  await page.getByRole("dialog", { name: "Cổng sạc phù hợp" }).waitFor();
+  assert.equal((await state()).schedules.length, scheduleCount);
+  await page.locator("dialog [data-dialog-close]").click();
   await send("bookCharging");
   const schedule = (await state()).schedules.at(-1);
   await panel("plugCharger").locator("[name=code]").fill(schedule.code);
@@ -252,9 +262,19 @@ try {
   await send("telemetry.emit");
   assert.equal((await state()).telemetry.at(-1).result, "IGNORED_DUPLICATE");
   await panel("telemetry.emit").locator("[name=telemetryDevice]").selectOption("P-01-14");
+  await panel("telemetry.emit").locator('[data-submit-action="telemetry.register"]').click();
+  assert.ok((await state()).sensors.some((sensor) => sensor.id === "P-01-14"));
   await send("telemetry.emit");
   assert.equal((await state()).telemetry.at(-1).type, "PARKING_SPACE");
   assert.equal((await state()).telemetry.at(-1).result, "APPLIED");
+  await panel("telemetry.emit").locator("[name=telemetryDevice]").selectOption("CHG-01-01");
+  await panel("telemetry.emit").locator("[name=batteryPct]").fill("100");
+  await panel("telemetry.emit").locator("[name=powerKw]").fill("7");
+  await panel("telemetry.emit").locator("[name=energyKwh]").fill("2.5");
+  await send("telemetry.emit");
+  const fullPort = (await state()).ports.find((port) => port.id === "CHG-01-01");
+  assert.equal(fullPort.status, "CHARGED_FULL");
+  assert.equal(fullPort.plugged, true);
   await link("operator/what-if");
   await send("simulation.run");
   assert.ok((await state()).scenarios.length);
@@ -268,12 +288,20 @@ try {
   await page.locator('button[data-command="recommendation.apply"][data-payload*="' + redirect.id + '"]').click();
   assert.ok((await state()).notifications.some((item) => item.userId === "U-01" && item.relatedId === redirect.id));
   await link("operator/incidents");
+  const maintenanceTarget = (await state()).vehicles.find((vehicle) => vehicle.hubId === "H-01" && vehicle.status === "AVAILABLE" && !vehicle.blocked);
+  await panel("incident.open").locator("[name=targetId]").selectOption(maintenanceTarget.id);
   await panel("incident.open").locator("[name=reason]").fill("Kiểm tra khóa");
   await send("incident.open");
   await page.getByText("Phân loại và xếp mức độ", { exact: true }).first().click();
   await panel("incident.classify").locator("[name=severity]").selectOption("CRITICAL");
   await send("incident.classify");
   assert.equal((await state()).incidents.at(-1).severity, "CRITICAL");
+  await btn("incident.isolate").click();
+  await btn("incident.work").click();
+  await btn("incident.workInProgress").click();
+  assert.equal((await state()).workOrders.at(-1).status, "IN_PROGRESS");
+  await btn("incident.resolve").click();
+  assert.equal((await state()).workOrders.at(-1).status, "DONE");
   assert.ok((await state()).incidents.length);
   await link("operator/network-dashboard");
   const hubRows = page.locator('section[aria-label="Tình trạng từng Hub"] tbody tr');

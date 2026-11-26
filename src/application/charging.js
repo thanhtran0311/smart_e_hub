@@ -2,6 +2,8 @@ import { guardHubOnline, hubMetrics, uid } from "../domain/resources.js";
 import { ensure, getRow, owned, touch, usable } from "../domain/student-rules.js";
 import { CONTROL_COMMAND, CONTROL_RESULT, SCHEDULED_CHARGING as scheduled } from "../utils/status.js";
 import { ChargingSession } from "../domain/entities.js";
+import { recordIncident } from "../domain/incidents.js";
+import { appendNotification } from "../domain/notifications.js";
 import { deviceResult } from "./device-control.js";
 
 const connectedStatuses = ["PLUGGED", "CHARGING", "STOPPED"];
@@ -15,7 +17,7 @@ export class ChargingSessionService {
     const port = state.ports.find((row) => row.id === (session?.portId || schedule?.portId)) ??
       state.ports.find((row) => row.vehicleId === vehicleId &&
         (row.plugged || row.sensorPlugged || row.relayOn || row.sensorRelayOn ||
-          ["OCCUPIED_WAITING", "CHARGING", "STOPPED"].includes(row.status)));
+          ["OCCUPIED_WAITING", "CHARGING", "STOPPED", "CHARGED_FULL"].includes(row.status)));
     return session || schedule || port ? { schedule, port } : null;
   }
 
@@ -34,8 +36,11 @@ export class ChargingSessionService {
       "Chưa đủ điều kiện an toàn để đóng relay.",
     );
     ensure(ChargingSessionService.hasPowerFor(state, port, now), "Hub không đủ công suất cấp điện.");
-    const control = deviceResult(state, schedule, port, CONTROL_COMMAND.START_CHARGING, outcome, now, request);
-    if (control.result !== CONTROL_RESULT.DONE) return schedule;
+    const control = ChargingSessionService.requestControl(state, schedule, port, CONTROL_COMMAND.START_CHARGING, outcome, now, request);
+    if (control.result !== CONTROL_RESULT.DONE) {
+      ChargingSessionService.handleControlFailure(state, port, control, now);
+      return schedule;
+    }
     const session = new ChargingSession({
       id: uid("CSS"),
       scheduleId: schedule.id,
@@ -58,18 +63,70 @@ export class ChargingSessionService {
     return currentPowerKw + port.powerKw <= powerLimitKw;
   }
 
+  static requestControl(state, schedule, port, command, outcome, now, request) {
+    return deviceResult(state, schedule, port, command, outcome, now, request);
+  }
+
   static chargeReading(state, session, now) {
+    const estimated = Number.isFinite(session.meterReadingAt)
+      ? session.meterEnergyKwh + (Math.max(0, now - session.meterReadingAt) / 3_600_000) *
+        (session.measuredPowerKw ?? session.powerKw)
+      : (Math.max(0, now - session.start) / 3_600_000) * session.powerKw;
     const kwh =
       session.status === "CHARGING"
-        ? Math.max(
-            session.energyKwh || 0,
-            (Math.max(0, now - session.start) / 3600000) * session.powerKw,
-          )
+        ? Math.max(session.energyKwh || 0, estimated)
         : session.energyKwh || 0;
     return {
       energyKwh: kwh,
       cost: Math.round(kwh * state.config.params.CHARGING_RATE_VND_KWH),
     };
+  }
+
+  static updateSessionReading(state, sessionId, reading, sampledAt, now) {
+    const session = getRow(state.sessions, sessionId);
+    ensure(session.status === "CHARGING", "Phiên sạc không còn cấp điện.");
+    ensure(Number.isFinite(sampledAt) && sampledAt <= now && sampledAt >= (session.lastReadingAt ?? session.start),
+      "Mốc thời gian số đo sạc không hợp lệ.");
+    const { batteryPct, powerKw, energyKwh } = reading;
+    ensure((batteryPct === undefined || (Number.isFinite(batteryPct) && batteryPct >= 0 && batteryPct <= 100)) &&
+      (powerKw === undefined || (Number.isFinite(powerKw) && powerKw >= 0)) &&
+      (energyKwh === undefined || (Number.isFinite(energyKwh) && energyKwh >= 0)), "Số đo sạc không hợp lệ.");
+    const update = { lastReadingAt: sampledAt };
+    if (batteryPct !== undefined) update.batteryPct = batteryPct;
+    if (powerKw !== undefined) update.measuredPowerKw = powerKw;
+    if (energyKwh !== undefined) {
+      update.meterEnergyKwh = Math.max(session.meterEnergyKwh ?? 0, energyKwh);
+      update.meterReadingAt = sampledAt;
+      update.energyKwh = update.meterEnergyKwh;
+    }
+    touch(session.updateReading(update), {}, now);
+    const port = getRow(state.ports, session.portId);
+    if (batteryPct === 100 && usable(port) && !session.electricalFault) {
+      const schedule = getRow(state.schedules, session.scheduleId);
+      ChargingSessionService.deenergize(state, schedule, now, "ok");
+      if (schedule.status === "STOPPED") touch(port.markChargedFull(), {}, now);
+    }
+    return session;
+  }
+
+  static handleControlFailure(state, port, control, now, session) {
+    if (session) touch(session.markFaulted(control.faultCode), { lastControlId: control.id }, now);
+    appendNotification(state, {
+      target: "operator", type: "ALERT", relatedId: control.id,
+      title: "Cần đối soát lệnh sạc", message: port.id + " · " + control.message,
+    }, now);
+  }
+
+  static handleElectricalFault(state, port, faultCode, now) {
+    const incident = recordIncident(state, port.id, faultCode, now);
+    const session = state.sessions.find((item) => item.id === port.sessionId && item.status === "CHARGING");
+    if (!session) return incident;
+    touch(session.markFaulted(faultCode, true).updateReading(ChargingSessionService.chargeReading(state, session, now)), {}, now);
+    if (session.userId) appendNotification(state, {
+      userId: session.userId, type: "ALERT", relatedId: incident.id,
+      title: "Phiên sạc báo lỗi", message: port.id + " · Chờ xác nhận ngắt điện an toàn trước khi rút cáp.",
+    }, now);
+    return incident;
   }
 
   static deenergize(state, schedule, now, outcome) {
@@ -82,13 +139,10 @@ export class ChargingSessionService {
     ensure(session && port.sessionId === session.id && session.vehicleId === schedule.vehicleId &&
       port.vehicleId === schedule.vehicleId && port.scheduleId === schedule.id,
     "Cần đối soát phiên trước khi dừng.");
-    const control = deviceResult(state, schedule, port, CONTROL_COMMAND.STOP_CHARGING_SAFE, outcome, now);
+    const control = ChargingSessionService.requestControl(state, schedule, port, CONTROL_COMMAND.STOP_CHARGING_SAFE, outcome, now);
     session.updateReading(ChargingSessionService.chargeReading(state, session, now));
     if (control.result !== CONTROL_RESULT.DONE) {
-      touch(session, {
-        lastControlId: control.id,
-        faultCode: control.faultCode,
-      }, now);
+      ChargingSessionService.handleControlFailure(state, port, control, now, session);
       return schedule;
     }
     touch(session, {

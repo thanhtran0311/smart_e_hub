@@ -65,7 +65,12 @@ export function hubMetrics(state, hubId, now) {
   };
 }
 
-export function networkSnapshot(state, now) {
+export function alertsForHubs(hubs) {
+  return hubs.filter((hub) => hub.loadStatus !== "NORMAL")
+    .map((hub) => ({ hubId: hub.id, status: hub.loadStatus }));
+}
+
+export function networkSnapshot(state, now, checkAnomalies = alertsForHubs) {
   const timeout = state.config.params.TELEMETRY_TIMEOUT_SEC * 1000;
   const staleSources = new Set(state.sensors.filter((sensor) =>
     sensor.type !== "HUB" &&
@@ -85,7 +90,6 @@ export function networkSnapshot(state, now) {
   return {
     snapshotAt: now,
     hubs,
-    alerts: hubs.filter((hub) => hub.loadStatus !== "NORMAL")
-      .map((hub) => ({ hubId: hub.id, status: hub.loadStatus })),
+    alerts: checkAnomalies(hubs),
   };
 }

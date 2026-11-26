@@ -39,6 +39,13 @@ export class Hub {
   getEmptySpaceCount(slots) {
     return slots.filter((slot) => ParkingSpace.prototype.canReleaseToAvailable.call(slot)).length;
   }
+
+  reserveInboundSpaces(slots, count, holdId) {
+    const available = slots.filter((slot) => slot.hubId === this.id && slot.canReleaseToAvailable());
+    if (!Number.isInteger(count) || count < 0 || available.length < count)
+      throw new Error("Sức chứa đích đã thay đổi hoặc không đủ. Hãy xem lại.");
+    return available.slice(0, count).map((slot) => slot.markReserved(holdId));
+  }
 }
 
 export class ParkingSpace {
@@ -68,6 +75,9 @@ export class ParkingSpace {
   updateSensorStatus(occupied) {
     this.sensorOccupied = occupied;
   }
+
+  markPendingCheck() { return Object.assign(this, { blocked: true, inspectionStatus: "PENDING_CHECK" }); }
+  markFaulted() { return Object.assign(this, { blocked: true, inspectionStatus: "FAULTED" }); }
 }
 
 export class Vehicle {
@@ -104,12 +114,15 @@ export class PrivateVehicle extends Vehicle {
 export class Reservation {
   constructor(data) { Object.assign(this, data); }
 
-  isActive(at) { return CONFIRMED_PARKING.includes(this.status) && at < this.expiresAt; }
+  isActive(at) {
+    if (this.status === "CHECKING_IN" || this.status === "UNLOCKED") return at <= this.checkInDeadline;
+    return CONFIRMED_PARKING.includes(this.status) && at < this.expiresAt;
+  }
   belongsTo(studentId) { return this.userId === studentId; }
   matches(vehicleId, pickupHubId) { return this.vehicleId === vehicleId && this.hubId === pickupHubId; }
 
   confirm() { this.status = "CONFIRMED"; return this; }
-  cancel() { this.status = "CANCELLED"; return this; }
+  cancel(reason = "Sinh viên hủy giữ xe.") { return Object.assign(this, { status: "CANCELLED", cancelReason: reason }); }
   expire() { this.status = "EXPIRED"; return this; }
   consume(tripId) { return Object.assign(this, { status: "CONSUMED", tripId }); }
 }
@@ -123,12 +136,22 @@ export class Trip {
 
   isActive() { return this.status !== "COMPLETED"; }
 
-  requestEnd(returnHubId, returnSlotId) {
-    return Object.assign(this, { status: "RETURN_PENDING", returnHubId, returnSlotId, operationError: null });
+  requestEnd(returnHubId, returnSlotId, at) {
+    return Object.assign(this, { status: "RETURN_PENDING", returnHubId, returnSlotId, returnRequestedAt: at, operationError: null });
   }
 
-  attachParkingEvidence(evidenceId, lockedAt) {
-    return Object.assign(this, { status: "PENDING_VERIFICATION", evidenceId, lockedAt });
+  attachParkingEvidence(evidenceId, lockedAt, parkingEvidence) {
+    return Object.assign(this, { evidenceId, lockedAt, parkingEvidence });
+  }
+
+  markPendingVerification(reason) {
+    return Object.assign(this, { status: "PENDING_VERIFICATION", verificationReason: reason });
+  }
+
+  reportIssue(description) { this.issueDescription = description; }
+
+  durationMinutes(at = Date.now()) {
+    return Math.max(0, Math.floor(((this.end ?? at) - this.start) / 60_000));
   }
 
   confirmEnded(at) { return Object.assign(this, { status: "COMPLETED", end: at }); }
@@ -158,10 +181,19 @@ export class ChargingSchedule {
 export class ChargingPort {
   constructor(data) { Object.assign(this, data); }
 
+  markReserved(scheduleId) { this.reservedScheduleId = scheduleId; return this; }
+  markPendingCheck() { return Object.assign(this, { blocked: true, inspectionStatus: "PENDING_CHECK" }); }
+  markFaulted() { return Object.assign(this, { blocked: true, inspectionStatus: "FAULTED" }); }
+
+  markChargedFull() {
+    if (!this.relayOn && !this.sensorRelayOn && this.plugged) this.status = "CHARGED_FULL";
+    return this;
+  }
+
   markOccupiedWaiting(schedule) {
     return Object.assign(this, {
       status: "OCCUPIED_WAITING", plugged: true, sensorPlugged: true, relayOn: false,
-      scheduleId: schedule.id, vehicleId: schedule.vehicleId,
+      scheduleId: schedule.id, vehicleId: schedule.vehicleId, reservedScheduleId: null,
     });
   }
 
@@ -184,7 +216,13 @@ export class ChargingSession {
 
   updateReading(reading) { return Object.assign(this, reading); }
 
-  complete() { this.status = "COMPLETED"; return this; }
+  markFaulted(faultCode, electrical = false) {
+    this.faultCode = faultCode;
+    if (electrical) Object.assign(this, { electricalFault: true, electricalFaultCode: faultCode });
+    return this;
+  }
+
+  complete() { this.status = this.electricalFault ? "FAILED" : "COMPLETED"; return this; }
 }
 
 export class DispatchOrder {
@@ -229,7 +267,9 @@ export class TelemetryEvent {
       case "PARKING_SPACE":
         return payload.occupied !== undefined;
       case "CHARGING_PORT":
-        return payload.plugged !== undefined && payload.relayOn !== undefined && (!payload.relayOn || payload.plugged);
+        return payload.plugged !== undefined && payload.relayOn !== undefined && (!payload.relayOn || payload.plugged) &&
+          ["batteryPct", "powerKw", "energyKwh"].every((key) => payload[key] === undefined ||
+            (Number.isFinite(payload[key]) && payload[key] >= 0 && (key !== "batteryPct" || payload[key] <= 100)));
       default:
         return false;
     }
@@ -242,8 +282,10 @@ export class Incident {
   constructor(data) { Object.assign(this, data); }
 
   markPendingCheck() { this.status = "PENDING_CHECK"; }
+  deferIsolation() { this.markPendingCheck(); }
   markIsolated(priorStatus) { Object.assign(this, { status: "ISOLATED", priorStatus }); }
   resolve() { this.status = "RESOLVED"; }
+  cancel(reason, at) { return Object.assign(this, { status: "CANCELLED", cancelReason: reason, cancelledAt: at }); }
 }
 
 export class WorkOrder {
@@ -251,6 +293,7 @@ export class WorkOrder {
 
   markSent() { this.status = "SENT"; }
   markPendingResend() { this.status = "PENDING_RESEND"; }
+  markInProgress(at) { Object.assign(this, { status: "IN_PROGRESS", startedAt: at }); }
   complete() { this.status = "DONE"; }
 }
 

@@ -1,11 +1,13 @@
-import { loadStore } from "./infrastructure/store.js";
+import { AuthService, loadStore } from "./infrastructure/store.js";
 import {
   studentCommand,
   expireStudentHolds,
   ReservationService,
+  ParkingService,
+  ChargingScheduleService,
 } from "./application/student.js";
 import { ChargingSessionService } from "./application/charging.js";
-import { operatorCommand } from "./application/operator.js";
+import { AuditLogService, operatorCommand } from "./application/operator.js";
 import { processPendingEffects } from "./application/pending-effects.js";
 import { TelemetryService } from "./application/telemetry.js";
 import { MonitoringService } from "./application/monitoring.js";
@@ -165,7 +167,7 @@ function pageContent(route, state, user, now) {
   if (route.role === "operator" && !route.denied) {
     return operatorView(page, state, now, ui);
   }
-  if (page === "pickup-return") return tripView(state, user);
+  if (page === "pickup-return") return tripView(state, user, now);
   if (page === "parking-charging") return parkingView(state, user, now, ui);
   return searchView(state, user, ui, now);
 }
@@ -225,7 +227,7 @@ function accountProfile(user) {
 }
 
 function endSession() {
-  if (store.state.userId != null) store.logout();
+  if (store.state.userId != null) AuthService.logout(store);
   ui = {};
   menu = false;
   loginTarget = "";
@@ -359,7 +361,7 @@ const shellCommands = {
     showDialog(
       "Xác nhận đặt xe " + preview.vehicleId,
       `<p>${esc(preview.hubName)} · Ô ${esc(preview.slotId)} · Pin ${esc(preview.soc)}%</p>
-      <p>Xe sẽ được giữ trong ${esc(preview.holdMinutes)} phút sau khi xác nhận.</p>
+      <p>Xe sẽ được giữ trong ${esc(store.readConfig("T_HOLD_MIN"))} phút sau khi xác nhận.</p>
       <p class="error-line" aria-live="polite"></p>
       <div class="dialog-actions">
         <button type="button" class="btn quiet" data-dialog-close>Hủy</button>
@@ -368,6 +370,16 @@ const shellCommands = {
         })}
       </div>`,
     );
+  },
+  previewParking(payload) {
+    const user = store.requireRole("student");
+    const { slot, start, end } = ParkingService.checkAvailability(store.state, payload, user, store.now());
+    showDialog("Ô đỗ phù hợp", `<p>${esc(slot.id)} · ${time(start)} – ${time(end)}</p><p>Bạn có thể giữ chỗ từ biểu mẫu.</p>`);
+  },
+  previewCharging(payload) {
+    const user = store.requireRole("student");
+    const { port, start, end } = ChargingScheduleService.checkAvailability(store.state, payload, user, store.now());
+    showDialog("Cổng sạc phù hợp", `<p>${esc(port.id)} · ${time(start)} – ${time(end)}</p><p>Khung giờ còn đủ công suất. Bạn có thể xác nhận lịch từ biểu mẫu.</p>`);
   },
   account() {
     const user = store.user;
@@ -445,12 +457,15 @@ async function execute(action, payload = {}) {
       const user = store.requireRole(operator ? "operator" : "student");
       refreshTimers();
       const command = operator ? operatorCommand : studentCommand;
-      const result = store.transaction((state, now) => {
+      const change = (state, now) => {
         const result = command(state, action, payload, { user, now });
         MonitoringService.triggerRebalanceAlertIfNeeded(state, now);
         return result;
-      });
+      };
+      const result = operator ? AuditLogService.runOperatorTransaction(store, user, action, payload, change)
+        : store.transaction(change);
       processPendingEffects(store);
+      if (action === "simulation.run") ui.savedScenarioId = "";
       render();
       if (action === "bookVehicle") {
         dialog.close();

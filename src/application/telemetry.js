@@ -1,9 +1,12 @@
 import { Sensor, TelemetryEvent } from "../domain/entities.js";
 import { recordIncident } from "../domain/incidents.js";
 import { appendNotification } from "../domain/notifications.js";
-import { hubMetrics, lookup, uid } from "../domain/resources.js";
+import { lookup, uid } from "../domain/resources.js";
 import { touch } from "../domain/student-rules.js";
 import { NOTIFICATION_TYPE, ROLE, TELEMETRY_RESULT as RESULT } from "../utils/status.js";
+import { ChargingSessionService } from "./charging.js";
+import { HubService } from "./hubs.js";
+import { MonitoringService } from "./monitoring.js";
 
 function bool(value) {
   if (value === true || value === "true") return true;
@@ -21,8 +24,12 @@ function sensorPayload(type, input, resource) {
       return { soc: Number(input.battery ?? resource.soc) };
     case "PARKING_SPACE":
       return { occupied: bool(input.occupied) };
-    case "CHARGING_PORT":
-      return { plugged: bool(input.plugged), relayOn: bool(input.relayOn) };
+    case "CHARGING_PORT": {
+      const payload = { plugged: bool(input.plugged), relayOn: bool(input.relayOn) };
+      for (const key of ["batteryPct", "powerKw", "energyKwh"])
+        if (input[key] != null && input[key] !== "") payload[key] = Number(input[key]);
+      return payload;
+    }
   }
 }
 
@@ -34,20 +41,37 @@ export class TelemetryService {
       .map((resource) => ({ type, resource })));
   }
 
+  static registerSensor(state, hubId, deviceId = hubId) {
+    const hub = lookup(state.hubs, hubId);
+    const device = deviceId === hubId ? { type: "HUB", resource: hub }
+      : TelemetryService.telemetryDevices(state, hubId).find(({ resource }) => resource.id === deviceId);
+    if (!device) throw new Error("Thiết bị không thuộc Hub đã chọn.");
+    const existing = state.sensors.find((row) => row.id === deviceId);
+    if (existing) {
+      existing.hubId = hubId;
+      return existing;
+    }
+    const sensor = new Sensor({ id: deviceId, hubId, type: device.type, lastSeenAt: null, online: false });
+    state.sensors.push(sensor);
+    return sensor;
+  }
+
+  static recordParkingEvidence(state, slot, trip, timestamp) {
+    const event = new TelemetryEvent({
+      id: uid("TEL"), eventId: uid("DOCK"), hubId: slot.hubId, deviceId: slot.id,
+      type: "PARKING_SPACE", source: "RETURN_DOCK", result: RESULT.APPLIED, timestamp, receivedAt: timestamp,
+      payload: { occupied: true, tripId: trip.id, vehicleId: trip.vehicleId },
+    });
+    state.telemetry.push(event);
+    return event;
+  }
+
   static updateState(state, device, hub, event, now) {
     const { type, resource } = device;
     const { payload } = event;
-    hub.updateTelemetryHeartbeat(event.timestamp);
-    hub.offline = false;
+    HubService.updateHubTelemetry(hub, type === "HUB" ? payload.powerKw : undefined, event.timestamp, now);
     if (type === "HUB") {
-      if (payload.powerKw !== undefined)
-        touch(hub, { measuredPowerKw: payload.powerKw, measuredPowerAt: event.timestamp }, now);
-      const metrics = hubMetrics(state, hub.id, now);
-      if (metrics.loadStatus === "OVERLOAD" || metrics.loadStatus === "WARNING")
-        appendNotification(state, {
-          target: ROLE.OPERATOR, type: NOTIFICATION_TYPE.WARNING,
-          title: "Cảnh báo tải Hub", message: hub.name + " · " + metrics.loadStatus,
-        }, now);
+      TelemetryService.evaluateAndAlert(state, device, hub, event, false, now);
       return;
     }
     const changes = { sensorOffline: false, lastTelemetryAt: event.timestamp };
@@ -56,11 +80,6 @@ export class TelemetryService {
       changes.soc = payload.soc;
       if (resource.status === "AVAILABLE" && payload.soc < state.config.params.MIN_SOC_BOOK_PCT)
         changes.status = "WAITING_CHARGE";
-      if (payload.soc < state.config.params.LOW_SOC_ALERT_PCT)
-        appendNotification(state, {
-          target: ROLE.OPERATOR, type: NOTIFICATION_TYPE.WARNING,
-          title: "Cảnh báo pin yếu", message: resource.id + " còn " + payload.soc + "% pin.",
-        }, now);
     } else if (type === "PARKING_SPACE") {
       resource.updateSensorStatus(payload.occupied);
       conflict ||= payload.occupied !== Boolean(resource.vehicleId);
@@ -70,7 +89,48 @@ export class TelemetryService {
       conflict ||= payload.plugged !== Boolean(resource.plugged) || payload.relayOn !== Boolean(resource.relayOn);
     }
     touch(resource, changes, now);
-    if (conflict) recordIncident(state, resource.id, payload.fault || "Cảm biến báo hiện trạng khác với dữ liệu vận hành.", now);
+    TelemetryService.evaluateAndAlert(state, device, hub, event, conflict, now);
+    if (type === "CHARGING_PORT" && !conflict && ["batteryPct", "powerKw", "energyKwh"].some((key) => payload[key] !== undefined)) {
+      const session = state.sessions.find((item) => item.id === resource.sessionId && item.status === "CHARGING");
+      if (session && event.timestamp >= (session.lastReadingAt ?? session.start))
+        ChargingSessionService.updateSessionReading(state, session.id, payload, event.timestamp, now);
+    }
+  }
+
+  static evaluateAndAlert(state, device, hub, event, conflict, now) {
+    const { type, resource } = device;
+    const { payload } = event;
+    if (type === "HUB") {
+      const load = MonitoringService.evaluateHubLoadStatus(state, hub.id, now);
+      if (load === "OVERLOAD" || load === "WARNING") appendNotification(state, {
+        target: ROLE.OPERATOR, type: NOTIFICATION_TYPE.WARNING,
+        title: "Cảnh báo tải Hub", message: hub.name + " · " + load,
+      }, now);
+      return;
+    }
+    if (type === "VEHICLE" && payload.soc < state.config.params.LOW_SOC_ALERT_PCT) appendNotification(state, {
+      target: ROLE.OPERATOR, type: NOTIFICATION_TYPE.WARNING,
+      title: "Cảnh báo pin yếu", message: resource.id + " còn " + payload.soc + "% pin.",
+    }, now);
+    if (type === "CHARGING_PORT" && payload.fault) {
+      ChargingSessionService.handleElectricalFault(state, resource, payload.fault, now);
+    } else if (conflict) {
+      recordIncident(state, resource.id, payload.fault || "Cảm biến báo hiện trạng khác với dữ liệu vận hành.", now);
+    }
+  }
+
+  static publishEvent(state, event, device, hub, now) {
+    if (event.result !== RESULT.APPLIED && event.result !== RESULT.TIMEOUT) return;
+    const sensor = TelemetryService.registerSensor(state, hub.id, device.resource.id);
+    if (event.result === RESULT.TIMEOUT) TelemetryService.markOffline(state, sensor, device.resource, now);
+    else {
+      sensor.markOnline(event.timestamp);
+      TelemetryService.updateState(state, device, hub, event, now);
+    }
+  }
+
+  static validatePacket(event, now) {
+    return Number.isFinite(event.timestamp) && event.timestamp <= now && event.isWellFormed();
   }
 
   static receiveTelemetry(state, input, { now }) {
@@ -81,7 +141,6 @@ export class TelemetryService {
     if (!device) throw new Error("Thiết bị không thuộc Hub đã chọn.");
     const { type, resource } = device;
     const deviceId = resource.id;
-    const sensor = state.sensors.find((row) => row.id === deviceId);
     const previous = state.telemetry.findLast((row) => row.deviceId === deviceId && row.result === RESULT.APPLIED);
     if (input.mode === "duplicate" && !previous)
       throw new Error("Hãy phát một gói hợp lệ cho thiết bị trước khi gửi lại.");
@@ -95,22 +154,14 @@ export class TelemetryService {
       event.result = RESULT.TIMEOUT;
     else if (state.telemetry.some((row) => row.deviceId === deviceId && row.eventId === eventId && row.result === RESULT.APPLIED))
       event.result = RESULT.IGNORED_DUPLICATE;
-    else if (input.mode === "corrupt" || !Number.isFinite(timestamp) || timestamp > now || !event.isWellFormed())
+    else if (input.mode === "corrupt" || !TelemetryService.validatePacket(event, now))
       event.result = RESULT.REJECTED_CORRUPT;
     else if (now - timestamp > timeout || !event.isNewerThan(previous?.timestamp ?? -Infinity) ||
       (type !== "HUB" && timestamp < (resource.lastTelemetryAt ?? -Infinity)))
       event.result = RESULT.IGNORED_STALE;
     else event.result = RESULT.APPLIED;
 
-    if ([RESULT.APPLIED, RESULT.TIMEOUT].includes(event.result)) {
-      const tracked = sensor || new Sensor({ id: deviceId, hubId: hub.id, type, lastSeenAt: null });
-      if (!sensor) state.sensors.push(tracked);
-      if (event.result === RESULT.TIMEOUT) TelemetryService.markOffline(state, tracked, resource, now);
-      else {
-        tracked.markOnline(timestamp);
-        TelemetryService.updateState(state, device, hub, event, now);
-      }
-    }
+    TelemetryService.publishEvent(state, event, device, hub, now);
     state.telemetry.push(event);
     return {
       TIMEOUT: type === "HUB" ? "Đã mô phỏng mất kết nối Hub." : "Đã ghi nhận cảm biến mất kết nối.",

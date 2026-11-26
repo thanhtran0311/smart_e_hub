@@ -25,16 +25,20 @@ export function classifyAndPrioritize(incident, category, severity) {
 }
 
 /** Block new allocations immediately. Keep physical state until a safe isolation is confirmed. */
-export function recordIncident(state, targetId, reason, now) {
+export function recordIncident(state, targetId, reason, now, origin = "SYSTEM") {
   const asset = lookup(
     [...state.vehicles, ...state.slots, ...state.ports],
     targetId,
   );
   if (!reason?.trim()) throw new Error("Nhập mô tả sự cố.");
   const existing = state.incidents.find(
-    (i) => i.targetId === asset.id && i.status !== "RESOLVED",
+    (i) => i.targetId === asset.id && !["RESOLVED", "CANCELLED"].includes(i.status),
   );
-  if (existing) return existing;
+  if (existing) {
+    if (origin === "SYSTEM") existing.hasSystemAlert = true;
+    return existing;
+  }
+  const wasBlocked = Boolean(asset.blocked);
   asset.blocked = true;
   asset.version = (asset.version || 0) + 1;
   asset.updatedAt = now;
@@ -48,6 +52,8 @@ export function recordIncident(state, targetId, reason, now) {
     status: "ISOLATING",
     reason: reason.trim(),
     createdAt: now,
+    origin,
+    wasBlocked,
     affected: [],
   });
   classifyAndPrioritize(incident, resourceType,
@@ -66,8 +72,7 @@ export function recordIncident(state, targetId, reason, now) {
     booking.updatedAt = now;
     booking.version = (booking.version || 0) + 1;
     incident.affected.push(booking.id);
-    NotificationService.sendNotification(state, {
-      userId: booking.userId,
+    NotificationService.sendNotification(state, [booking.userId], {
       title: "Đặt chỗ bị ảnh hưởng",
       message: "Sự cố " + asset.id + " ảnh hưởng đến " + booking.id,
     }, now);

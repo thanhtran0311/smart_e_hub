@@ -1,11 +1,14 @@
 import { guardHubOnline, isHubOnline, slotAvailable, uid } from "../domain/resources.js";
 import { recordIncident } from "../domain/incidents.js";
+import { appendNotification } from "../domain/notifications.js";
+import { TelemetryService } from "./telemetry.js";
+import { HubService } from "./hubs.js";
+import { VehicleService } from "./vehicle.js";
 import { ChargingSchedule, ParkingReservation, Reservation, Trip } from "../domain/entities.js";
 import {
   ACTIVE_PARKING as activeParking, CONFIRMED_PARKING as confirmedParking,
-  CONTROL_COMMAND, CONTROL_RESULT, SCHEDULED_CHARGING as scheduled,
+  SCHEDULED_CHARGING as scheduled,
 } from "../utils/status.js";
-import { deviceResult } from "./device-control.js";
 import { ChargingSessionService } from "./charging.js";
 import {
   chargingWindowAvailable,
@@ -22,6 +25,7 @@ import {
 } from "../domain/student-rules.js";
 
 export { chargeReading } from "./charging.js";
+export { HubService, VehicleService };
 
 const minute = 60000;
 
@@ -34,52 +38,6 @@ function requireStudent(state, user) {
   return account;
 }
 
-export class HubService {
-  static searchHubs(
-    state,
-    { query = "", type = "", minSoc = 0, nearby, minAvailableVehicles = 0 } = {},
-    now = Date.now(),
-  ) {
-    const fold = (value) =>
-      value
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/\p{M}/gu, "")
-        .replaceAll("đ", "d");
-    const hubs = nearby ? HubService.getNearbyHubs(state.hubs, nearby) : state.hubs;
-    return hubs
-      .filter((hub) =>
-        fold(hub.id + " " + hub.name + " " + hub.zone).includes(fold(query)),
-      )
-      .map((hub) => ({
-        hub,
-        vehicles: VehicleService.findAvailableVehicles(state, hub.id, { type, minSoc }, now),
-      }))
-      .filter((result) => result.vehicles.length >= minAvailableVehicles);
-  }
-
-  static getHubDetail(state, hubId) {
-    return getRow(state.hubs, hubId);
-  }
-
-  static getNearbyHubs(hubs, { lat, lon, radiusKm }) {
-    ensure(
-      Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lon) && Math.abs(lon) <= 180 &&
-      Number.isFinite(radiusKm) && radiusKm > 0,
-      "Tọa độ hoặc bán kính tra cứu không hợp lệ.",
-    );
-    const radians = Math.PI / 180;
-    return hubs.filter((hub) => Number.isFinite(hub.lat) && Number.isFinite(hub.lon))
-      .map((hub) => {
-        const a = Math.sin((hub.lat - lat) * radians / 2) ** 2 +
-          Math.cos(lat * radians) * Math.cos(hub.lat * radians) * Math.sin((hub.lon - lon) * radians / 2) ** 2;
-        return { hub, distance: 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a))) };
-      }).filter(({ distance }) => distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance)
-      .map(({ hub }) => hub);
-  }
-}
-
 export class ReservationService {
   static booking(state, input, user) {
     const row = owned(state.reservations, input.reservationId, user);
@@ -88,7 +46,7 @@ export class ReservationService {
   }
 
   static validateVehicleBooking(state, input, user, now) {
-    const vehicle = getRow(state.vehicles, input.vehicleId);
+    const vehicle = VehicleService.getVehicleSnapshot(state, input.vehicleId);
     guardHubOnline(state, vehicle.hubId, now);
     checkVersion(vehicle, input.expectedVersion);
     ensure(!input.hubId || input.hubId === vehicle.hubId, "Xe không còn ở Hub đã chọn.");
@@ -99,21 +57,34 @@ export class ReservationService {
         ),
       "Tài khoản còn nợ hoặc có chuyến chưa kết thúc.",
     );
-    ensure(
-      !state.reservations.some(
-        (r) =>
-          r.type === "VEHICLE" && r.belongsTo(user.id) &&
-          [...confirmedParking, "CHECKING_IN", "UNLOCKED", "AFFECTED"].includes(
-            r.status,
-          ),
-      ),
-      "Bạn đang có một đơn giữ xe.",
-    );
+    ensure(!ReservationService.getActiveReservation(state, user.id), "Bạn đang có một đơn giữ xe.");
     ensure(
       parkedVehicleReady(state, vehicle, now),
       "Xe chưa sẵn sàng, không đủ pin hoặc đã có người giữ.",
     );
     return vehicle;
+  }
+
+  static getActiveReservation(state, studentId) {
+    return state.reservations.find((row) => row.type === "VEHICLE" && row.belongsTo(studentId) &&
+      [...confirmedParking, "CHECKING_IN", "UNLOCKED", "AFFECTED"].includes(row.status)) ?? null;
+  }
+
+  static validatePickup(state, input, user, now) {
+    const reservation = ReservationService.booking(state, input, user);
+    VehicleService.validateVehicleAtHub(state, reservation, now);
+    ensure(confirmedParking.includes(reservation.status) && reservation.isActive(now),
+      "Đơn đã hết hạn hoặc đang được xử lý.");
+    ensure(input.code === reservation.vehicleId, "Mã xe chưa khớp với đơn.");
+    return reservation;
+  }
+
+  static consumeReservation(reservation, tripId, now) {
+    return touch(reservation.consume(tripId), {}, now);
+  }
+
+  static reconcileVehicleHold(state, reservation, now, vehicle = VehicleService.getVehicleSnapshot(state, reservation.vehicleId)) {
+    releaseVehicleHold(state, vehicle, reservation, now);
   }
 
   static validateBooking(state, input, { user, now }) {
@@ -148,10 +119,9 @@ export class ReservationService {
     return row;
   }
 
-  static closeVehicleBooking(state, row, status, now) {
-    const vehicle = getRow(state.vehicles, row.vehicleId);
-    releaseVehicleHold(state, vehicle, row, now);
-    return touch(status === "EXPIRED" ? row.expire() : row.cancel(), {}, now);
+  static closeVehicleBooking(state, row, status, now, reason) {
+    ReservationService.reconcileVehicleHold(state, row, now);
+    return touch(status === "EXPIRED" ? row.expire() : row.cancel(reason), {}, now);
   }
 
   static cancelReservation(state, input, user, now) {
@@ -160,70 +130,23 @@ export class ReservationService {
       confirmedParking.includes(row.status),
       "Chỉ có thể hủy đơn đang giữ xe và chưa bắt đầu nhận.",
     );
-    return ReservationService.closeVehicleBooking(state, row, "CANCELLED", now);
-  }
-}
-
-export class VehicleService {
-  static findAvailableVehicles(state, hubId, { type, minSoc }, now) {
-    return state.vehicles.filter((vehicle) =>
-      vehicle.hubId === hubId && (!type || vehicle.type === type) &&
-      vehicle.soc >= minSoc && parkedVehicleReady(state, vehicle, now),
-    );
+    const reason = String(input.reason ?? "").trim().slice(0, 240) || "Sinh viên hủy giữ xe.";
+    return ReservationService.closeVehicleBooking(state, row, "CANCELLED", now, reason);
   }
 
-  static validateVehicleAtHub(state, row, now) {
-    const vehicle = getRow(state.vehicles, row.vehicleId);
-    const slot = getRow(state.slots, row.slotId);
-    guardHubOnline(state, row.hubId, now);
-    ensure(
-      vehicle.isAt(row.hubId, row.slotId) &&
-        vehicle.reservationId === row.id &&
-        vehicle.status === "RESERVED" &&
-        usable(vehicle) && usable(slot) &&
-        slot.hubId === row.hubId &&
-        slot.status === "OCCUPIED" &&
-        slot.vehicleId === vehicle.id &&
-        slot.sensorOccupied !== false,
-      "Xe hoặc chốt nhận chưa sẵn sàng. Hãy đối soát trước khi tiếp tục.",
-    );
-    return vehicle;
-  }
-
-  static pickupChargingSchedule(state, row) {
-    const connection = ChargingSessionService.chargingConnection(state, row.vehicleId);
-    const schedule = connection?.schedule;
-    ensure(
-      schedule && row.matches(schedule.vehicleId, schedule.hubId) &&
-        schedule.userId == null && schedule.reservationId == null &&
-        connection.port?.scheduleId === schedule.id && connection.port.vehicleId === row.vehicleId &&
-        connection.port.hubId === row.hubId,
-      "Cần vận hành viên đối soát cổng sạc, xe và lịch trước khi nhận.",
-    );
-    return schedule;
-  }
-
-  static stopChargingSafely(state, row, now, outcome) {
-    const schedule = VehicleService.pickupChargingSchedule(state, row);
-    return ChargingSessionService.deenergize(state, schedule, now, outcome);
-  }
-
-  static disconnectPickupCharger(state, row, now) {
-    const schedule = VehicleService.pickupChargingSchedule(state, row);
-    ensure(!getRow(state.ports, schedule.portId).sensorOffline, "Cảm biến cổng sạc mất kết nối. Cần đối soát.");
-    return ChargingSessionService.disconnectCharger(state, schedule, now);
+  static expireReservation(state, row, now) {
+    ReservationService.closeVehicleBooking(state, row, "EXPIRED", now);
+    appendNotification(state, {
+      userId: row.userId, relatedId: row.id, title: "Đơn giữ xe đã hết hạn",
+      message: "Thời hạn nhận xe " + row.vehicleId + " đã kết thúc.",
+    }, now);
+    return row;
   }
 }
 
 export class TripService {
   static requestPickup(state, input, user, now) {
-    const row = ReservationService.booking(state, input, user);
-    VehicleService.validateVehicleAtHub(state, row, now);
-    ensure(
-      row.isActive(now),
-      "Đơn đã hết hạn hoặc đang được xử lý.",
-    );
-    ensure(input.code === row.vehicleId, "Mã xe chưa khớp với đơn.");
+    const row = ReservationService.validatePickup(state, input, user, now);
     return touch(
       row,
       {
@@ -238,7 +161,7 @@ export class TripService {
     const row = ReservationService.booking(state, input, user);
     const vehicle = VehicleService.validateVehicleAtHub(state, row, now);
     ensure(
-      row.status === "CHECKING_IN" && now <= row.checkInDeadline,
+      row.status === "CHECKING_IN" && row.isActive(now),
       "Yêu cầu nhận xe đã hết hiệu lực hoặc đã qua bước kiểm tra.",
     );
     return { row, vehicle };
@@ -262,8 +185,8 @@ export class TripService {
   static unlockAck(state, input, user, now) {
     const { row, vehicle } = TripService.checkedInPickup(state, input, user, now);
     ensure(!ChargingSessionService.chargingConnection(state, vehicle.id), "Cần xác nhận ngắt điện và rút cáp trước khi mở khóa.");
-    const control = deviceResult(state, row, vehicle, CONTROL_COMMAND.UNLOCK, input.outcome, now);
-    if (control.result !== CONTROL_RESULT.DONE) return row;
+    const control = VehicleService.unlockVehicle(state, row, vehicle, input.outcome, now);
+    if (!VehicleService.verifyUnlock(control)) return row;
     touch(vehicle, { locked: false }, now);
     return touch(
       row,
@@ -279,7 +202,7 @@ export class TripService {
     const row = ReservationService.booking(state, input, user);
     const vehicle = VehicleService.validateVehicleAtHub(state, row, now);
     ensure(
-      row.status === "UNLOCKED" && now <= row.checkInDeadline && vehicle.locked === false,
+      row.status === "UNLOCKED" && row.isActive(now) && vehicle.locked === false,
       "Chưa có xác nhận mở khóa an toàn trong thời hạn nhận xe.",
     );
     ensure(!ChargingSessionService.chargingConnection(state, vehicle.id), "Cần đối soát kết nối sạc trước khi xác nhận nhận xe.");
@@ -293,7 +216,7 @@ export class TripService {
     }, now);
     touch(trip, {}, now);
     state.trips.push(trip);
-    touch(row.consume(trip.id), {}, now);
+    ReservationService.consumeReservation(row, trip.id, now);
     touch(vehicle.markInUse(trip.id), {}, now);
     return trip;
   }
@@ -307,7 +230,7 @@ export class TripService {
     const reason = String(input.reason || "").trim();
     ensure(reason, "Hãy mô tả sự cố bạn quan sát được.");
     recordIncident(state, row.vehicleId, reason, now);
-    ReservationService.closeVehicleBooking(state, row, "CANCELLED", now);
+    ReservationService.closeVehicleBooking(state, row, "CANCELLED", now, reason);
     return row;
   }
 
@@ -322,7 +245,7 @@ export class TripService {
     );
     touch(slot.markAvailable(), {}, now);
     touch(
-      getRow(state.vehicles, trip.vehicleId),
+      VehicleService.getVehicleSnapshot(state, trip.vehicleId),
       { hubId: null, slotId: null },
       now,
     );
@@ -338,20 +261,32 @@ export class TripService {
       ["ACTIVE", "RETURN_PENDING"].includes(trip.status) && trip.departed,
       "Cần có chuyến đang đi và chưa ghi nhận khóa ở chốt trả.",
     );
-    const previous = state.slots.find((s) => s.id === trip.returnSlotId);
-    ensure(!previous?.vehicleId && !previous?.sensorOccupied, "Chốt cũ còn ghi nhận xe. Cần đối soát tại chỗ.");
+    const slotId = trip.returnSlotId
+      ? TripService.changeReturnPosition(state, trip, hubId, selected, now)
+      : TripService.holdReturnPosition(state, trip, hubId, selected, now);
+    return touch(trip.requestEnd(hubId, slotId, now), {}, now);
+  }
+
+  static holdReturnPosition(state, trip, hubId, selected, now) {
     const slot = state.slots.find(
       (s) =>
         s.hubId === hubId &&
         s.type === "SHARED" &&
         (!selected || s === selected) &&
-        (!previous || s !== previous) &&
+        s.id !== trip.returnSlotId &&
         slotAvailable(state, s),
     );
     ensure(slot, "Hub đích hết chốt nhận xe. Hãy chọn Hub khác.");
-    if (previous?.holdId === trip.id) touch(previous, { holdId: null }, now);
     touch(slot.markReserved(trip.id), {}, now);
-    return touch(trip.requestEnd(hubId, slot.id), {}, now);
+    return slot.id;
+  }
+
+  static changeReturnPosition(state, trip, hubId, selected, now) {
+    const previous = state.slots.find((s) => s.id === trip.returnSlotId);
+    ensure(!previous?.vehicleId && !previous?.sensorOccupied, "Chốt cũ còn ghi nhận xe. Cần đối soát tại chỗ.");
+    const slotId = TripService.holdReturnPosition(state, trip, hubId, selected, now);
+    if (previous?.holdId === trip.id) touch(previous, { holdId: null }, now);
+    return slotId;
   }
 
   static endTrip(state, input, user, now) {
@@ -366,38 +301,59 @@ export class TripService {
         input.vehicleId === trip.vehicleId,
       "Xe hoặc chốt khác với yêu cầu trả.",
     );
-    const vehicle = getRow(state.vehicles, trip.vehicleId);
-    const control = deviceResult(state, trip, vehicle, CONTROL_COMMAND.LOCK, input.outcome, now);
-    if (control.result !== CONTROL_RESULT.DONE) return trip;
+    ensure((input.dockEvidence ?? "occupied") === "occupied", "Cảm biến chưa xác nhận xe đã vào chốt trả.");
+    const vehicle = VehicleService.getVehicleSnapshot(state, trip.vehicleId);
+    const control = VehicleService.lockVehicle(state, trip, vehicle, input.outcome, now);
+    if (!VehicleService.verifyLock(control)) return trip;
     touch(vehicle, { locked: true }, now);
     // Persist physical evidence before the separate business commit; retrying settlement is safe.
-    return touch(trip.attachParkingEvidence(uid("ACK"), now), {}, now);
+    const observation = TelemetryService.recordParkingEvidence(state, slot, trip, now);
+    const parkingEvidence = { eventId: observation.eventId, slotId: slot.id, observedAt: now };
+    trip.attachParkingEvidence(uid("ACK"), now, parkingEvidence);
+    return touch(trip.markPendingVerification("Đã xác nhận chốt và khóa xe; chờ hoàn tất giao dịch."), {}, now);
+  }
+
+  static verifyParkingEvidence(state, trip, slot, vehicle) {
+    if (trip.status !== "PENDING_VERIFICATION" || !trip.evidenceId || slot.holdId !== trip.id ||
+        (slot.vehicleId && slot.vehicleId !== vehicle.id) || vehicle.locked !== true) return false;
+    const evidence = trip.parkingEvidence;
+    // Schema 1 trips were already checked before the lock acknowledgement was saved.
+    if (!evidence) return true;
+    const event = state.telemetry.find((row) => row.eventId === evidence.eventId && row.source === "RETURN_DOCK");
+    return Boolean(event && event.deviceId === slot.id && event.timestamp === evidence.observedAt &&
+      event.payload.occupied && event.payload.tripId === trip.id && event.payload.vehicleId === vehicle.id &&
+      !(slot.lastTelemetryAt > event.timestamp && slot.sensorOccupied === false));
+  }
+
+  static reportTripIssue(state, trip, vehicle, description, now) {
+    trip.reportIssue(description);
+    return recordIncident(state, vehicle.id, description, now);
+  }
+
+  static getTripSummary(state, tripId, user, now) {
+    const trip = owned(state.trips, tripId, user);
+    return { ...trip, durationMinutes: trip.durationMinutes(now) };
+  }
+
+  static reconcilePendingTrip(state, tripId, user) {
+    const trip = owned(state.trips, tripId, user);
+    const slot = getRow(state.slots, trip.returnSlotId);
+    const vehicle = VehicleService.getVehicleSnapshot(state, trip.vehicleId);
+    ensure(
+      TripService.verifyParkingEvidence(state, trip, slot, vehicle),
+      "Cần đối soát bằng chứng xe đã vào đúng ô và khóa an toàn.",
+    );
+    return { trip, slot, vehicle };
   }
 
   static finalizeTrip(state, input, user, now) {
-    const trip = owned(state.trips, input.tripId, user);
-    const slot = getRow(state.slots, trip.returnSlotId);
-    const vehicle = getRow(state.vehicles, trip.vehicleId);
-    ensure(
-      trip.status === "PENDING_VERIFICATION" &&
-        trip.evidenceId &&
-        slot.holdId === trip.id &&
-        (!slot.vehicleId || slot.vehicleId === vehicle.id),
-      "Cần đối soát bằng chứng xe đã vào đúng ô và khóa an toàn.",
-    );
-    touch(
-      vehicle.classifyAfterReturn(Boolean(input.issue), state.config.params.MIN_SOC_BOOK_PCT),
-      { hubId: slot.hubId, slotId: slot.id, tripId: null },
-      now,
-    );
+    const { trip, slot, vehicle } = TripService.reconcilePendingTrip(state, input.tripId, user);
+    const description = String(input.issueDescription ?? "").trim().slice(0, 240);
+    const hasIssue = Boolean(input.issue || description);
+    VehicleService.classifyReturnedVehicle(state, vehicle, slot, hasIssue, now);
     touch(slot.markOccupied(vehicle.id), { holdId: null }, now);
-    if (input.issue)
-      recordIncident(
-        state,
-        vehicle.id,
-        "Sinh viên báo xe cần kiểm tra kỹ thuật khi trả.",
-        now,
-      );
+    if (hasIssue)
+      TripService.reportTripIssue(state, trip, vehicle, description || "Sinh viên báo xe cần kiểm tra kỹ thuật khi trả.", now);
     return touch(trip.confirmEnded(now), {}, now);
   }
 }
@@ -407,7 +363,12 @@ export class ParkingService {
     return state.privateVehicles.filter((vehicle) => vehicle.belongsTo(studentId));
   }
 
-  static confirmReservation(state, input, user, now) {
+  static getHubs(state) {
+    return state.hubs;
+  }
+
+  static checkAvailability(state, input, user, now) {
+    requireStudent(state, user);
     const slot = getRow(state.slots, input.slotId);
     const vehicle = getRow(state.privateVehicles, input.vehicleId);
     const { start, end } = windowFor(input, now);
@@ -417,6 +378,11 @@ export class ParkingService {
       "Xe cá nhân này không thuộc tài khoản hiện tại.",
     );
     parkingWindowAvailable(state, slot, vehicle.id, start, end, now);
+    return { slot, vehicle, start, end };
+  }
+
+  static confirmReservation(state, input, user, now) {
+    const { slot, vehicle, start, end } = ParkingService.checkAvailability(state, input, user, now);
     const deposit = state.config.params.PARKING_DEPOSIT_VND;
     ensure(
       user.balance - user.held >= deposit,
@@ -460,13 +426,25 @@ export class ParkingService {
 
   static closeParking(state, row, status, now) {
     ParkingService.settleDeposit(state, row, status === "EXPIRED", now);
-    touch(getRow(state.slots, row.slotId), {}, now);
-    for (const schedule of state.schedules)
-      if (schedule.reservationId === row.id && scheduled.includes(schedule.status))
-        ChargingScheduleService.closeSchedule(state, schedule, "CANCELLED", now);
+    ParkingService.reconcileSlot(getRow(state.slots, row.slotId), now);
+    ChargingScheduleService.cancelScheduleByReservationExpiry(state, row.id, now);
     if (status === "EXPIRED") return touch(row.expire(), {}, now);
     if (status === "CANCELLED") return touch(row.cancel(), {}, now);
     return touch(row, { status }, now);
+  }
+
+  static expireOverdueReservations(state, now) {
+    const overdue = state.reservations.filter((row) =>
+      row.type === "PARKING" && confirmedParking.includes(row.status) && now > row.expiresAt);
+    for (const row of overdue) ParkingService.closeParking(state, row, "EXPIRED", now);
+    return overdue;
+  }
+
+  static reconcileSlot(slot, now) {
+    if (slot.sensorOccupied != null && slot.sensorOccupied !== Boolean(slot.vehicleId) &&
+        slot.inspectionStatus !== "FAULTED") slot.markPendingCheck();
+    touch(slot, {}, now);
+    return slot.inspectionStatus || (slot.sensorOffline ? "PENDING_CHECK" : slot.status);
   }
 
   static getReservation(state, input, user) {
@@ -530,11 +508,17 @@ export class ParkingService {
 }
 
 export class ChargingScheduleService {
-  static getChargers(state, hubId) {
-    return state.ports.filter((port) => port.hubId === hubId && usable(port));
+  static getActiveBookings(state, studentId, now) {
+    return state.reservations.filter((row) => row.type === "PARKING" && row.belongsTo(studentId) &&
+      row.end > now && activeParking.includes(row.status));
   }
 
-  static confirmSchedule(state, input, user, now) {
+  static getChargers(state, hubId, connector) {
+    return state.ports.filter((port) => port.hubId === hubId && usable(port) && (!connector || port.connector === connector));
+  }
+
+  static checkAvailability(state, input, user, now) {
+    requireStudent(state, user);
     const row = ParkingService.getReservation(state, input, user);
     const port = getRow(state.ports, input.portId);
     const vehicle = getRow(state.privateVehicles, row.vehicleId);
@@ -567,6 +551,11 @@ export class ChargingScheduleService {
         "Cổng đang được sử dụng và chưa có giờ trống phù hợp.",
       );
     }
+    return { row, port, start, end };
+  }
+
+  static confirmSchedule(state, input, user, now) {
+    const { row, port, start, end } = ChargingScheduleService.checkAvailability(state, input, user, now);
     const schedule = new ChargingSchedule({
       id: uid("SCH"),
       reservationId: row.id,
@@ -580,8 +569,8 @@ export class ChargingScheduleService {
       createdAt: now,
     });
     touch(schedule.markScheduled(), {}, now);
-    touch(port, {}, now);
     state.schedules.push(schedule);
+    ChargingScheduleService.reconcilePort(state, port, now);
     return schedule;
   }
 
@@ -595,29 +584,42 @@ export class ChargingScheduleService {
   }
 
   static closeSchedule(state, schedule, status, now) {
-    touch(getRow(state.ports, schedule.portId), {}, now);
-    return touch(status === "EXPIRED" ? schedule.expire() : schedule.cancel(), {}, now);
+    touch(status === "EXPIRED" ? schedule.expire() : schedule.cancel(), {}, now);
+    ChargingScheduleService.reconcilePort(state, getRow(state.ports, schedule.portId), now);
+    return schedule;
+  }
+
+  static cancelScheduleByReservationExpiry(state, reservationId, now) {
+    for (const schedule of state.schedules)
+      if (schedule.reservationId === reservationId && scheduled.includes(schedule.status))
+        ChargingScheduleService.closeSchedule(state, schedule, "CANCELLED", now);
+  }
+
+  static reconcilePort(state, port, now, bumpVersion = true) {
+    const before = port.inspectionStatus;
+    const mismatch = (port.sensorPlugged != null && port.sensorPlugged !== Boolean(port.plugged)) ||
+      (port.sensorRelayOn != null && port.sensorRelayOn !== Boolean(port.relayOn));
+    if (mismatch && port.inspectionStatus !== "FAULTED") port.markPendingCheck();
+    const reservation = port.status === "AVAILABLE" && usable(port) && state.schedules.find((row) =>
+      row.portId === port.id && scheduled.includes(row.status) && row.start <= now && now < row.end);
+    const reservationId = reservation?.id ?? null;
+    if (bumpVersion || reservationId !== (port.reservedScheduleId ?? null) || before !== port.inspectionStatus)
+      touch(port.markReserved(reservationId), {}, now);
+    return port.inspectionStatus || (port.sensorOffline ? "PENDING_CHECK" : port.reservedScheduleId ? "RESERVED" : port.status);
   }
 }
 
 export function expireStudentHolds(state, now) {
   for (const row of state.reservations) {
-    if (row.type === "VEHICLE") {
-      if (
+    if (row.type === "VEHICLE" && (
         (confirmedParking.includes(row.status) && now >= row.expiresAt) ||
         (["CHECKING_IN", "UNLOCKED"].includes(row.status) &&
           now > row.checkInDeadline)
-      ) {
-        ReservationService.closeVehicleBooking(state, row, "EXPIRED", now);
-      }
-    } else if (
-      row.type === "PARKING" &&
-      confirmedParking.includes(row.status) &&
-      now > row.expiresAt
-    ) {
-      ParkingService.closeParking(state, row, "EXPIRED", now);
+    )) {
+      ReservationService.expireReservation(state, row, now);
     }
   }
+  ParkingService.expireOverdueReservations(state, now);
   for (const schedule of state.schedules) {
     if (scheduled.includes(schedule.status) && now >= schedule.end)
       ChargingScheduleService.closeSchedule(state, schedule, "EXPIRED", now);
@@ -633,6 +635,7 @@ export function expireStudentHolds(state, now) {
       }
     }
   }
+  for (const port of state.ports) ChargingScheduleService.reconcilePort(state, port, now, false);
 }
 
 export const { searchHubs, getNearbyHubs } = HubService;
