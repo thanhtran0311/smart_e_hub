@@ -4,7 +4,7 @@
 
 ## Chạy trên máy cá nhân
 
-Trong thư mục C:\Code\smart_e_hub, chạy một trong hai lệnh sau.
+Mở terminal tại thư mục gốc của repo và chạy một trong hai lệnh sau.
 
 ```powershell
 python -m http.server 8000 --bind 127.0.0.1
@@ -41,7 +41,14 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 - Mỗi 15 giây, nguồn telemetry giả lập gửi heartbeat cho các Hub trực tuyến, xử lý thời hạn và cập nhật UI. Hub đã bị ngắt kết nối thủ công giữ nguyên dữ liệu cũ đến khi phát gói hợp lệ.
 - Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Các tab cùng địa chỉ demo dùng chung dữ liệu vận hành, còn tài khoản đang đăng nhập được giữ riêng theo từng tab. Tải lại tab vẫn giữ tài khoản, đơn, chuyến, lịch, cọc và đồng hồ.
 
-## Kiến trúc đang thực thi
+## Cấu trúc thư mục
+
+- [src/](src/) chứa mã SPA, được chia theo tầng giao diện, ứng dụng, nghiệp vụ và hạ tầng.
+- [assets/](assets/) chứa font, biểu tượng và bản đồ dùng khi chạy. [data/](data/) chứa dữ liệu mẫu và cấu hình demo.
+- [tests/](tests/) gồm ca kiểm thử Node, Playwright và kiểm tra thủ công. [tools/](tools/) chứa máy chủ demo cục bộ.
+- [docs/](docs/) chứa tài liệu thiết kế, bàn giao và đối chiếu.
+
+Xem [cây thư mục và kiến trúc chi tiết](docs/repository-structure.md).
 
 Xem [PDF Submit 3](docs/references/submission-3.pdf), [Deployment View](docs/submission-3/deployment-view.md), [Implementation View](docs/submission-3/development-view.md) và [44 lớp cùng 184 phương thức](docs/submission-3/class-and-method-descriptions.md).
 
