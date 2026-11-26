@@ -8,6 +8,7 @@ import {
 } from "../src/domain/resources.js";
 import { readSeed, demoStore } from "./seed.mjs";
 import { operatorCommand, proposeSchedule } from "../src/application/operator.js";
+import { studentCommand } from "../src/application/student.js";
 
 test("Seed mô tả xe, vị trí, tài khoản, phiên sạc và lịch tương lai nhất quán", async () => {
   const store = await demoStore();
@@ -171,4 +172,47 @@ test("Snapshot schema 1 thiếu danh sách phát sinh vẫn lập lịch đượ
     { hubId: "H-01", plan }, { user: restored.user, now: now() }));
   assert.equal(restored.state.plans.length, 1);
   assert.equal(restored.state.deviceCommands[0].result, "PENDING");
+});
+
+test("UC02 hai phiên dùng chung kho chỉ xác nhận được một đơn cho cùng version xe", async () => {
+  const makeStorage = () => {
+    const values = new Map();
+    return {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    };
+  };
+  let queue = Promise.resolve();
+  const lockManager = {
+    request(_name, work) {
+      const result = queue.then(work);
+      queue = result.catch(() => {});
+      return result;
+    },
+  };
+  const seed = await readSeed();
+  const storage = makeStorage();
+  const shared = { storage, lockManager, now: () => 1_800_000_000_000 };
+  const firstSession = makeStorage();
+  const secondSession = makeStorage();
+  const [first, second] = await Promise.all([firstSession, secondSession].map((sessionStorage) =>
+    OperationalStore.openShared(seed, { ...shared, sessionStorage })));
+  first.login("student01", "123456");
+  second.login("student02", "123456");
+  const book = (store) => store.withExclusive(() => store.transaction((state, now) =>
+    studentCommand(state, "bookVehicle", { vehicleId: "E-102", expectedVersion: 1 }, { user: store.user, now })));
+  assert.throws(() => first.heartbeat(), /khóa/);
+  const [accepted, rejected] = await Promise.allSettled([book(first), book(second)]);
+  assert.equal(accepted.value.status, "CONFIRMED");
+  assert.equal(rejected.status, "rejected");
+  assert.match(rejected.reason.message, /vừa thay đổi/);
+  assert.equal(first.user.id, "U-01");
+  assert.equal(second.user.id, "U-03");
+  const disk = JSON.parse(storage.getItem("ehub_state"));
+  assert.equal(disk.userId, null);
+  assert.deepEqual(disk.reservations.filter((row) => row.vehicleId === "E-102").map((row) => row.id), [accepted.value.id]);
+  const reloaded = await OperationalStore.openShared(seed, { ...shared, sessionStorage: secondSession });
+  assert.equal(reloaded.user.id, "U-03");
+  assert.equal(reloaded.state.vehicles.find((row) => row.id === "E-102").reservationId, accepted.value.id);
 });

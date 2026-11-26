@@ -20,13 +20,19 @@ try {
       errors.push(response.status() + " " + response.url());
   });
   const base = process.env.DEMO_URL || "http://127.0.0.1:8000";
-  const state = () =>
-    page.evaluate(() => JSON.parse(localStorage.getItem("ehub_state")));
+  const state = (tab = page) =>
+    tab.evaluate(() => navigator.locks.request("ehub_state", () => ({
+      ...JSON.parse(localStorage.getItem("ehub_state")),
+      userId: sessionStorage.getItem("ehub_session_user"),
+    })));
   const btn = (action) =>
     page.locator('[data-command="' + action + '"]').first();
   const panel = (action) =>
     page.locator('form[data-action="' + action + '"]').first();
-  const send = (action) => panel(action).locator("button[type=submit]").first().click();
+  const send = async (action) => {
+    await panel(action).locator("button[type=submit]").first().click();
+    await state();
+  };
   const studentEntry = page.getByRole("link", { name: "Mở WebApp – Phân hệ Sinh viên" });
   const studentLogin = page.getByRole("dialog", { name: "Phân hệ Sinh viên" });
   const link = async (key) => {
@@ -129,6 +135,7 @@ try {
   await send("unlockAck");
   await btn("confirmPickup").click();
   await btn("leaveSlot").click();
+  assert.equal((await state()).trips.at(-1).departed, true);
   await page.reload();
   await assertStudentProfile();
   await panel("requestReturn").locator("[name=hubId]").selectOption("H-02");
@@ -146,6 +153,7 @@ try {
   await parking.locator("[name=slotId]").selectOption(slot.id);
   await send("bookParking");
   await btn("checkInParking").click();
+  await btn("leaveParking").waitFor();
   await page.locator("details summary").first().click();
   await panel("bookCharging")
     .locator("[name=portId]")
@@ -237,6 +245,11 @@ try {
   await send("incident.open");
   assert.ok((await state()).incidents.length);
   await link("operator/network-dashboard");
+  const hubRows = page.locator('section[aria-label="Tình trạng từng Hub"] tbody tr');
+  assert.equal(await hubRows.locator("time").count(), 5);
+  const offlineHub = hubRows.filter({ hasText: "H-05" });
+  await offlineHub.getByText("Dữ liệu cũ", { exact: true }).waitFor();
+  assert.ok(await offlineHub.locator("time").getAttribute("datetime"));
   await page.locator("select[name=networkFormat]").selectOption("csv");
   assert.equal(await page.getByRole("link", { name: "Xuất báo cáo" }).getAttribute("download"), "smart-e-hub-network.csv");
   console.log("PASS · lập lịch sạc, telemetry, what-if, sự cố và dashboard");
@@ -276,6 +289,38 @@ try {
   console.log(
     "PASS · điều hướng di động, không tràn ngang, không lỗi JS hoặc HTTP",
   );
+
+  const bookingContext = await browser.newContext();
+  try {
+    const tabs = await Promise.all([bookingContext.newPage(), bookingContext.newPage()]);
+    const students = ["student01", "student02"];
+    const userIds = ["U-01", "U-03"];
+    const bookButton = (tab) => tab.locator('button[data-command="bookVehicle"][data-payload*="E-102"]');
+    await Promise.all(tabs.map(async (tab, index) => {
+      await tab.goto(base + "/#/student/hub-search");
+      await tab.locator("dialog [name=username]").fill(students[index]);
+      await tab.locator('form[data-action="authenticate"] button[type=submit]').click();
+      await bookButton(tab).waitFor();
+    }));
+    const payloads = await Promise.all(tabs.map((tab) => bookButton(tab).getAttribute("data-payload")));
+    assert.equal(JSON.parse(payloads[0]).expectedVersion, JSON.parse(payloads[1]).expectedVersion);
+    await Promise.all(tabs.map((tab) => bookButton(tab).click()));
+    const snapshots = await Promise.all(tabs.map((tab) => state(tab)));
+    const bookings = snapshots[0].reservations.filter((item) => item.vehicleId === "E-102");
+    assert.equal(bookings.length, 1);
+    assert.equal(bookings[0].status, "CONFIRMED");
+    const winner = userIds.indexOf(bookings[0].userId);
+    assert.ok(winner >= 0);
+    await tabs[winner].waitForURL("**/#/student/pickup-return");
+    await tabs[1 - winner].getByText("Tài nguyên vừa thay đổi. Hãy kiểm tra và xác nhận lại.", { exact: true }).waitFor();
+    assert.deepEqual(snapshots.map((snapshot) => snapshot.userId), userIds);
+    assert.deepEqual(snapshots[0].reservations, snapshots[1].reservations);
+    await tabs[1 - winner].reload();
+    assert.equal((await state(tabs[1 - winner])).userId, userIds[1 - winner]);
+  } finally {
+    await bookingContext.close();
+  }
+  console.log("PASS · hai tab xác nhận cùng version, chỉ một đơn E-102 được ghi");
 } finally {
   await browser.close();
 }

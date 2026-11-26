@@ -20,6 +20,9 @@ import {
 } from "../../application/operator.js";
 
 const stack = (body, className = "") => '<div class="stack ' + className + '">' + body + "</div>";
+const updateTime = new Intl.DateTimeFormat("vi-VN", {
+  dateStyle: "short", timeStyle: "medium",
+});
 const row = (body) => '<div class="row">' + body + "</div>";
 const muted = (text) => '<small class="muted">' + esc(text) + "</small>";
 const hubName = (s, id) => s.hubs.find((h) => h.id === id)?.name || id;
@@ -102,12 +105,15 @@ function network(s, now, ui) {
       <td class="green-text"><strong>${charge}</strong></td>
       <td>${stats.freePorts}/${stats.totalPorts} trống${muted(stats.currentPowerKw + "/" + stats.powerLimitKw + " kW")}</td>
       <td>${badge(stats.online ? "ONLINE" : "OFFLINE")}${condition ? muted(condition) : ""}</td>
+      <td>${Number.isFinite(hub.lastTelemetryAt)
+        ? '<time datetime="' + new Date(hub.lastTelemetryAt).toISOString() + '">' + esc(updateTime.format(hub.lastTelemetryAt)) + "</time>"
+        : "Chưa có dữ liệu"}</td>
     </tr>`;
   }).join("");
   return `<header class="page-heading"><h1>Giám sát trạng thái toàn mạng lưới</h1>
       <div class="row">${field("Định dạng", setting("networkFormat", [["json", "JSON"], ["csv", "CSV"]], format))}
       <a class="btn secondary" download="smart-e-hub-network.${format}" href="${esc(downloadUrl)}">${icon("download", 14)} Xuất báo cáo</a></div></header>
-    ${table(["Mã & tên Mobility Hub", "Xe khả dụng", "Tỷ lệ lấp đầy bãi đỗ", "Pin TB", "Cổng sạc", "Trạng thái tải & kết nối"], rows, "Tình trạng từng Hub")}
+    ${table(["Mã & tên Mobility Hub", "Xe khả dụng", "Tỷ lệ lấp đầy bãi đỗ", "Pin TB", "Cổng sạc", "Trạng thái tải & kết nối", "Cập nhật cuối"], rows, "Tình trạng từng Hub")}
     <div class="grid dashboard-details">
       <details class="panel" data-details="dashboardMap"${ui.dashboardMap ? " open" : ""}><summary>Bản đồ vận hành</summary>
         <div class="map-area operator-map">${campusMap(hubs, active.hub.id)}</div>
@@ -124,6 +130,9 @@ function network(s, now, ui) {
       </details>
     </div>`;
 }
+
+const recallConfirmation = (id) =>
+  button("Đội xác nhận thu hồi, xe chưa rời Hub", "dispatch.confirmRecall", { id }, "secondary");
 
 function dispatchView(s, now, ui) {
   const pair = hubPair(s, ui),
@@ -169,15 +178,16 @@ function dispatchView(s, now, ui) {
     .map((o) => {
       const controls =
         o.status === "PENDING"
-          ? row(
-              button("Xác nhận xe đã rời Hub", "dispatch.start", { id: o.id }) +
-                button(
-                  "Hủy lệnh",
-                  "dispatch.cancel",
-                  { id: o.id },
-                  "secondary",
-                ),
-            )
+          ? o.assignmentStatus === "RECALL_REQUESTED"
+            ? muted("Đang chờ xác nhận thu hồi. Các ô đích vẫn được giữ.") +
+              row(
+                recallConfirmation(o.id) +
+                button("Đội báo xe đã rời Hub", "dispatch.start", { id: o.id }),
+              )
+            : row(
+                button("Xác nhận xe đã rời Hub", "dispatch.start", { id: o.id }) +
+                button("Hủy lệnh", "dispatch.cancel", { id: o.id }, "secondary"),
+              )
           : "";
       return (
         "<article>" +
@@ -481,6 +491,9 @@ function whatIf(s, now, ui) {
     REDIRECT_USERS: "Thông báo chuyển hướng nhận xe",
   })[item.type];
   const recs = s.recommendations.filter((r) => r.scenarioId === scenario?.id);
+  const snapshotHasSensorFreshness = scenario?.snapshot?.every((hub) => Array.isArray(hub.staleSensorIds));
+  const confidence = scenario?.confidence === "LIMITED" ? "Độ tin cậy hạn chế"
+    : snapshotHasSensorFreshness ? "Độ tin cậy cao" : "Chưa có đánh giá độ mới từng cảm biến";
   const pending = recs.filter((r) => r.status === "PENDING");
   const batch =
     pending.length > 1
@@ -502,9 +515,9 @@ function whatIf(s, now, ui) {
             submit("Áp dụng các mục đã chọn"),
         )
       : "";
-  const recActions = (r) =>
-    r.status === "PENDING"
-      ? row(
+  const recActions = (r) => {
+    if (r.status === "PENDING")
+      return row(
           button("Áp dụng", "recommendation.apply", { id: r.id }) +
             button(
               "Từ chối",
@@ -512,15 +525,13 @@ function whatIf(s, now, ui) {
               { id: r.id },
               "secondary",
             ),
-        )
-      : r.status === "APPLIED"
-        ? button(
-            "Xử lý bù",
-            "recommendation.compensate",
-            { id: r.id },
-            "secondary",
-          )
-        : "";
+      );
+    if (r.status === "APPLIED")
+      return button("Xử lý bù", "recommendation.compensate", { id: r.id }, "secondary");
+    const order = s.orders.find((item) => item.id === r.orderId);
+    return r.status === "PENDING_CHECK" && order?.assignmentStatus === "RECALL_REQUESTED"
+      ? recallConfirmation(order.id) : "";
+  };
   return stack(
     card(
       "Kịch bản nhu cầu di chuyển",
@@ -566,7 +577,7 @@ function whatIf(s, now, ui) {
                 scenario.durationMin +
                 " phút · Nhu cầu " +
                 scenario.demandPct +
-                "%",
+                "% · " + confidence,
             ) +
               muted(
                 "Nguồn dữ liệu: " +
@@ -576,6 +587,7 @@ function whatIf(s, now, ui) {
                         h.id +
                         " (" +
                         (h.online ? "trực tuyến" : "dữ liệu cũ") +
+                        (h.staleSensorIds?.length ? ", cảm biến có dữ liệu cũ " + h.staleSensorIds.join(", ") : "") +
                         ", " +
                         time(h.lastTelemetryAt) +
                         ")",

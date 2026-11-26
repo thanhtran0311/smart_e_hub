@@ -1,5 +1,5 @@
 import { guardHubOnline, isHubOnline } from "./resources.js";
-import { ACTIVE_CHARGING as activeSchedules } from "../utils/status.js";
+import { ACTIVE_CHARGING as activeSchedules, ACTIVE_PARKING } from "../utils/status.js";
 
 export const overlaps = (a, b, c, d) => a < d && c < b;
 export const usable = (row) =>
@@ -64,6 +64,57 @@ export function parkedVehicleReady(state, vehicle, now) {
     usable(slot) &&
     isHubOnline(state, vehicle.hubId, now)
   );
+}
+
+export function releaseVehicleHold(state, vehicle, reservation, now) {
+  if (vehicle.reservationId !== reservation.id) return;
+  const changes = { reservationId: null };
+  if (vehicle.status === "RESERVED") {
+    const slot = state.slots.find((row) => row.id === reservation.slotId);
+    const ready =
+      slot?.vehicleId === vehicle.id &&
+      slot.id === vehicle.slotId &&
+      slot.hubId === vehicle.hubId &&
+      vehicle.hubId === reservation.hubId &&
+      slot.status === "OCCUPIED" &&
+      slot.sensorOccupied !== false &&
+      usable(slot) &&
+      usable(vehicle) &&
+      vehicle.locked !== false &&
+      !reservation.operationError &&
+      reservation.status !== "UNLOCKED" &&
+      isHubOnline(state, reservation.hubId, now);
+    changes.status = ready ? "AVAILABLE" : "PENDING_CHECK";
+  }
+  touch(vehicle, changes, now);
+}
+
+export function parkingWindowAvailable(state, slot, vehicleId, start, end, now) {
+  guardHubOnline(state, slot.hubId, now);
+  ensure(
+    slot.type === "PRIVATE" && usable(slot) && !slot.holdId,
+    "Ô không phù hợp hoặc đang bị chặn.",
+  );
+  ensure(
+    !state.reservations.some((row) =>
+      row.type === "PARKING" &&
+      ACTIVE_PARKING.includes(row.status) &&
+      (row.slotId === slot.id || row.vehicleId === vehicleId) &&
+      overlaps(start, end, row.start, row.end)
+    ),
+    "Xe hoặc ô đỗ đã có lịch trùng giờ.",
+  );
+  if (slot.vehicleId || slot.sensorOccupied || slot.status === "OCCUPIED") {
+    ensure(
+      slot.vehicleId && start > now &&
+      state.reservations.some((row) =>
+        row.type === "PARKING" && row.slotId === slot.id &&
+        row.vehicleId === slot.vehicleId && row.status === "CHECKED_IN" &&
+        row.end > now && row.end <= start
+      ),
+      "Ô đang có xe và chưa xác định được thời điểm trống phù hợp.",
+    );
+  }
 }
 
 export function chargingWindowAvailable(

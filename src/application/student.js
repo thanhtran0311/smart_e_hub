@@ -11,9 +11,10 @@ import {
   checkVersion,
   ensure,
   getRow,
-  overlaps,
   owned,
+  parkingWindowAvailable,
   parkedVehicleReady,
+  releaseVehicleHold,
   touch,
   usable,
   windowFor,
@@ -129,23 +130,7 @@ function bookVehicle(state, input, user, now) {
 
 function closeVehicleBooking(state, row, status, now) {
   const vehicle = getRow(state.vehicles, row.vehicleId);
-  const slot = getRow(state.slots, row.slotId);
-  const docked =
-    slot.vehicleId === vehicle.id && slot.status === "OCCUPIED" && usable(slot);
-  if (vehicle.reservationId === row.id && vehicle.status === "RESERVED") {
-    const ready =
-      docked &&
-      usable(vehicle) &&
-      vehicle.locked !== false &&
-      !row.operationError &&
-      isHubOnline(state, row.hubId, now) &&
-      row.status !== "UNLOCKED";
-    touch(
-      vehicle,
-      { reservationId: null, status: ready ? "AVAILABLE" : "PENDING_CHECK" },
-      now,
-    );
-  }
+  releaseVehicleHold(state, vehicle, row, now);
   return touch(row, { status }, now);
 }
 
@@ -385,41 +370,12 @@ function bookParking(state, input, user, now) {
   const slot = getRow(state.slots, input.slotId);
   const vehicle = getRow(state.privateVehicles, input.vehicleId);
   const { start, end } = windowFor(input, now);
-  guardHubOnline(state, slot.hubId, now);
   checkVersion(slot, input.expectedVersion);
   ensure(
     (vehicle.userId || vehicle.ownerId) === user.id,
     "Xe cá nhân này không thuộc tài khoản hiện tại.",
   );
-  ensure(
-    slot.type === "PRIVATE" && usable(slot) && !slot.holdId,
-    "Ô không phù hợp hoặc đang bị chặn.",
-  );
-  ensure(
-    !state.reservations.some(
-      (r) =>
-        r.type === "PARKING" &&
-        activeParking.includes(r.status) &&
-        (r.slotId === slot.id || r.vehicleId === vehicle.id) &&
-        overlaps(start, end, r.start, r.end),
-    ),
-    "Xe hoặc ô đỗ đã có lịch trùng giờ.",
-  );
-  if (slot.vehicleId || slot.status === "OCCUPIED") {
-    ensure(
-      start > now &&
-        state.reservations.some(
-          (r) =>
-            r.type === "PARKING" &&
-            r.slotId === slot.id &&
-            r.vehicleId === slot.vehicleId &&
-            r.status === "CHECKED_IN" &&
-            r.end > now &&
-            r.end <= start,
-        ),
-      "Ô đang có xe và chưa xác định được thời điểm trống phù hợp.",
-    );
-  }
+  parkingWindowAvailable(state, slot, vehicle.id, start, end, now);
   const deposit = state.config.params.PARKING_DEPOSIT_VND;
   ensure(
     user.balance - user.held >= deposit,

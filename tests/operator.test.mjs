@@ -76,8 +76,12 @@ test("UC09 rejects stale vehicle versions and releases a cancelled dispatch comp
   );
   assert.throws(() => run("dispatch.create", p));
   assert.equal(store.state.orders.length, 0);
-  run("dispatch.create", order());
-  run("dispatch.cancel", { id: store.state.orders[0].id });
+  const current = order();
+  store.transaction((s, now) => operatorCommand(s, "dispatch.create", current, { user: store.user, now }));
+  const { id } = store.state.orders[0];
+  assert.equal(store.state.orders[0].assignmentStatus, "PENDING");
+  run("dispatch.cancel", { id });
+  assert.equal(store.state.orders[0].assignmentStatus, "CANCELLED");
   assert.equal(store.state.slots.filter((x) => x.holdId).length, 0);
   assert.equal(
     store.state.vehicles.find((v) => v.id === p.vehicleIds[0]).status,
@@ -168,8 +172,22 @@ test("UC12–13 isolates forecast, revalidates stale dispatch and compensates a 
   );
   run("recommendation.apply", { id: retry.id });
   assert.equal(store.state.orders.length, 2);
+  const applied = store.state.orders.at(-1);
+  assert.equal(applied.assignmentStatus, "SENT");
+  assert.throws(() => run("dispatch.confirmRecall", { id: applied.id }), /chưa yêu cầu thu hồi/);
   run("recommendation.compensate", { id: retry.id });
+  assert.equal(store.state.orders.at(-1).status, "PENDING");
+  assert.equal(store.state.orders.at(-1).assignmentStatus, "RECALL_REQUESTED");
+  assert.equal(store.state.recommendations.find((item) => item.id === retry.id).status, "PENDING_CHECK");
+  assert.equal(store.state.slots.filter((slot) => slot.holdId === applied.id).length, applied.items.length);
+  assert.match(operatorView("what-if", store.state, store.now(), {}), /dispatch.confirmRecall/);
+  run("dispatch.confirmRecall", { id: applied.id });
   assert.equal(store.state.orders.at(-1).status, "CANCELLED");
+  assert.equal(store.state.orders.at(-1).assignmentStatus, "RECALLED");
+  assert.equal(store.state.slots.some((slot) => slot.holdId === applied.id), false);
+  assert.equal(store.state.recommendations.find((item) => item.id === retry.id).status, "COMPENSATED");
+  run("dispatch.confirmRecall", { id: applied.id });
+  assert.throws(() => run("dispatch.start", { id: applied.id }), /đã đóng/);
 });
 
 test("UC14 ignores duplicate, stale, corrupt telemetry and blocks offline commits until live recovery", async () => {
@@ -225,6 +243,101 @@ test("UC13 selected group validates atomically, supports compensating an in-tran
     store.state.recommendations.find((r) => r.id === rec.id).status,
     "PENDING_CHECK",
   );
+});
+
+test("UC13 nhận xác nhận xuất phát trong lúc thu hồi thì giữ ô và chờ đối soát", async () => {
+  const { store, run } = await setup();
+  run("simulation.run", { sourceId: "H-01", destId: "H-02", durationMin: 60, demandPct: 200 });
+  const { id } = store.state.recommendations.find((item) => item.type === "REDISTRIBUTE");
+  run("recommendation.apply", { id });
+  const order = store.state.orders.at(-1);
+  run("recommendation.compensate", { id });
+  run("dispatch.start", { id: order.id });
+  assert.throws(() => run("dispatch.confirmRecall", { id: order.id }), /đã rời Hub/);
+  assert.equal(store.state.orders.at(-1).status, "IN_TRANSIT");
+  assert.equal(store.state.slots.filter((slot) => slot.holdId === order.id).length, order.items.length);
+  const rec = store.state.recommendations.find((item) => item.id === id);
+  assert.equal(rec.status, "PENDING_CHECK");
+  assert.match(rec.note, /Xe đã rời Hub/);
+});
+
+test("UC08 hiển thị thời điểm cập nhật riêng của từng Hub ngay trong bảng", async () => {
+  const { store } = await setup();
+  const markup = operatorView("network-dashboard", store.state, store.now(), {});
+  const rows = markup.match(/<tbody>([\s\S]*?)<\/tbody>/)[1].match(/<tr>[\s\S]*?<\/tr>/g);
+  assert.equal(rows.length, store.state.hubs.length);
+  for (const hub of store.state.hubs) {
+    const row = rows.find((html) => html.includes(hub.id));
+    assert.ok(row.includes('<time datetime="' + new Date(hub.lastTelemetryAt).toISOString() + '">'));
+    if (hub.offline) assert.match(row, /Dữ liệu cũ/);
+  }
+});
+
+test("UC11 đổi ô kiểm tra trùng lịch cho cùng xe ở ô khác", async () => {
+  const { store, run } = await setup();
+  store.login("student01", "123456");
+  const free = store.state.slots.filter((slot) =>
+    slot.hubId === "H-01" && slot.type === "PRIVATE" && slot.status === "AVAILABLE"
+  );
+  const now = store.now();
+  const minute = 60_000;
+  const reserve = (slot, start, end) => store.transaction((state, at) =>
+    studentCommand(state, "bookParking", {
+      slotId: slot.id, vehicleId: "PV-01", expectedVersion: slot.version,
+      start: now + start * minute, end: now + end * minute,
+    }, { user: store.user, now: at }));
+  const first = reserve(free[0], 10, 20);
+  const second = reserve(free[1], 30, 50);
+  store.login("operator01", "123456");
+  run("incident.open", { targetId: first.slotId, reason: "Chốt lỗi" });
+  const payload = { id: store.state.incidents.at(-1).id, recordId: first.id,
+    decision: "REPLACED", replacementId: free[2].id, startMinutes: 35, durationMinutes: 10 };
+  const before = store.state;
+  assert.throws(() => run("incident.remedy", payload), /trùng giờ/);
+  assert.equal(store.state, before);
+  run("incident.remedy", { ...payload, start: now + 55 * minute, end: now + 60 * minute, startMinutes: undefined, durationMinutes: undefined });
+  assert.equal(store.state.reservations.find((row) => row.id === second.id).status, "CONFIRMED");
+  const replaced = store.state.reservations.find((row) => row.id === first.id);
+  assert.equal(replaced.status, "REPLACED");
+  assert.equal(replaced.slotId, free[2].id);
+  assert.equal(replaced.expiresAt, replaced.end);
+});
+
+test("UC11 hủy đơn do chốt lỗi giữ xe chờ đối soát thay vì AVAILABLE", async () => {
+  const { store, run } = await setup();
+  store.login("student01", "123456");
+  const reservation = store.transaction((state, now) => studentCommand(state, "bookVehicle",
+    { vehicleId: "E-102", expectedVersion: 1 }, { user: store.user, now }));
+  store.login("operator01", "123456");
+  run("incident.open", { targetId: reservation.slotId, reason: "Chốt lỗi" });
+  run("incident.remedy", {
+    id: store.state.incidents.at(-1).id, recordId: reservation.id, decision: "CANCELLED",
+  });
+  const vehicle = store.state.vehicles.find((row) => row.id === reservation.vehicleId);
+  assert.equal(vehicle.status, "PENDING_CHECK");
+  assert.equal(vehicle.reservationId, null);
+  assert.equal(store.state.slots.find((slot) => slot.id === reservation.slotId).vehicleId, vehicle.id);
+});
+
+test("UC12 hạ độ tin cậy khi cảm biến quá hạn dù mọi Hub vẫn trực tuyến", async () => {
+  const { store, run } = await setup();
+  run("telemetry.emit", { hubId: "H-05", mode: "live" });
+  const packet = { hubId: "H-01", deviceId: "E-102", battery: 85 };
+  run("telemetry.emit", packet);
+  store.advance(2);
+  const scenario = { sourceId: "H-01", destId: "H-02", durationMin: 60, demandPct: 200 };
+  run("simulation.run", scenario);
+  const stale = store.state.scenarios.at(-1);
+  assert.ok(stale.snapshot.every((hub) => hub.online));
+  assert.deepEqual(stale.snapshot.find((hub) => hub.id === "H-01").staleSensorIds, ["E-102"]);
+  assert.equal(stale.confidence, "LIMITED");
+  const markup = operatorView("what-if", store.state, store.now(), {});
+  assert.match(markup, /Độ tin cậy hạn chế/);
+  assert.match(markup, /cảm biến có dữ liệu cũ E-102/);
+  run("telemetry.emit", packet);
+  run("simulation.run", scenario);
+  assert.equal(store.state.scenarios.at(-1).confidence, "HIGH");
+  assert.equal(store.state.scenarios.at(-2).confidence, "LIMITED");
 });
 
 test("Operator routes render and Student role cannot invoke an Operator handler", async () => {

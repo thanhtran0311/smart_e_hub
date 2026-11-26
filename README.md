@@ -38,7 +38,7 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 - CHG-01-01 đang có phiên sạc của student02 (PV-02) và lịch tương lai của dual01 (PV-03). CHG-01-02 trống để student01 thử sạc ngay.
 - Nút Điều khiển demo ở cuối sidebar tăng thời gian thêm 1, 2, 15 hoặc 60 phút. Dùng chức năng này để thử hết hạn giữ xe, check-in và thay đổi chỉ số năng lượng. Nhánh khôi phục dữ liệu có hộp xác nhận.
 - Mỗi 15 giây, nguồn telemetry giả lập gửi heartbeat cho các Hub trực tuyến, xử lý thời hạn và cập nhật UI. Hub đã bị ngắt kết nối thủ công giữ nguyên dữ liệu cũ đến khi phát gói hợp lệ.
-- Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Tải lại trang vẫn giữ đơn, chuyến, lịch, cọc và đồng hồ. JSON ban đầu được giữ làm dữ liệu khởi tạo.
+- Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Các tab cùng địa chỉ demo dùng chung dữ liệu vận hành, còn tài khoản đang đăng nhập được giữ riêng theo từng tab. Tải lại tab vẫn giữ tài khoản, đơn, chuyến, lịch, cọc và đồng hồ.
 
 ## Kiến trúc đang thực thi
 
@@ -99,7 +99,7 @@ node tests/browser-smoke.mjs
 ## Các giả định và giới hạn MVP
 
 - Phạm vi triển khai theo bản nộp 3, mục 2.3. Xác thực, telemetry, relay, khóa xe, đội vận chuyển và bảo trì đều được mô phỏng phía client. Phân quyền trong UI phục vụ minh họa thiết kế. Dữ liệu tài khoản mẫu nằm trong tệp tĩnh.
-- Giao dịch và version bảo vệ chuỗi thao tác trong một phiên. localStorage không cung cấp giao dịch đa người dùng hoặc đồng bộ nhiều tab/trình duyệt. Khi đổi vai trò để demo dữ liệu chung, đăng xuất và đăng nhập trong cùng tab.
+- Demo dùng Web Locks để tuần tự hóa giao dịch giữa các tab cùng origin trong một hồ sơ trình duyệt. Mỗi giao dịch đọc lại snapshot đã commit trước khi kiểm tra version. Các trình duyệt, hồ sơ và thiết bị khác nhau có dữ liệu độc lập. Chạy demo bằng trình duyệt hỗ trợ Web Locks trên localhost hoặc 127.0.0.1.
 - Kịch bản đỗ xe giữ cọc 50.000 đồng. No-show quá thời gian ân hạn khấu trừ cọc một lần. Hệ thống nhả khoản giữ khi hủy hợp lệ hoặc check-in. Các giá trị nằm trong config.json.
 - What-if dự báo theo bước 15 phút trên bản chụp mạng lưới. Lượt lấy xe, tỷ lệ xe đến và nhu cầu sạc là giả định demo. Kết quả hiển thị cả độ mới của dữ liệu đầu vào.
 - Phiên sạc ước tính kWh từ công suất và thời gian mô phỏng, chi phí từ cấu hình. Kết quả cần được trình bày là số liệu demo khi bảo vệ.

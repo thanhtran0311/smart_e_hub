@@ -38,8 +38,8 @@ Thời lượng khoảng 10–15 phút. Chạy máy chủ theo README, dùng m�
 
 1. Đăng nhập operator01. Vào Lịch sạc, chọn H-01 và áp dụng kế hoạch ưu tiên. Phiên đang chạy trên CHG-01-01 giữ nguyên nguồn điện. Lệnh cho lịch tương lai xuất hiện ở trạng thái chờ tới khung giờ và xác nhận cắm cáp.
 2. Vào Mô phỏng What-if, chọn nguồn H-01, đích H-02, nhu cầu 500% và 60 phút. Chạy mô phỏng.
-3. Kết quả nêu thời điểm chụp và độ mới của từng Hub, bao gồm H-05 offline. Xem dự báo xe, ô và sạc, lưu mẫu nếu cần chạy lại. Chọn một hoặc nhiều khuyến nghị để áp dụng. Dashboard và audit thể hiện kết quả. Khi áp dụng khuyến nghị chuyển hướng, mở Thông báo ở phiên Sinh viên.
-4. Chọn Xử lý bù cho khuyến nghị đã phát hành lệnh PENDING. Lệnh được hủy và giải phóng chỗ giữ. Với lệnh đã vận chuyển, hệ thống ghi chờ kiểm tra để đối soát từng xe.
+3. Kết quả nêu thời điểm chụp, độ tin cậy, độ mới của từng Hub và cảm biến có dữ liệu cũ. Xem dự báo xe, ô và sạc, lưu mẫu nếu cần chạy lại. Chọn một hoặc nhiều khuyến nghị để áp dụng. Khi áp dụng khuyến nghị chuyển hướng, mở Thông báo ở phiên Sinh viên.
+4. Chọn Xử lý bù cho khuyến nghị có lệnh đã gửi phân công. Các ô đích vẫn được giữ cho đến khi Operator ghi nhận đội xác nhận thu hồi và xe chưa rời Hub. Với xe đã rời Hub, hệ thống ghi chờ kiểm tra để đối soát từng xe.
 5. Vào Sự cố & bảo trì, chọn một xe AVAILABLE tại H-01 và nhập hiện tượng. Tạo hồ sơ, xác nhận cách ly an toàn.
 6. Thử Mô phỏng gửi lỗi để có phiếu chờ gửi lại, sau đó Gửi phiếu bảo trì. Mã phiếu giữ nguyên. Nhấn Xác nhận sửa xong để hoàn tất.
 7. Để demo đơn bị ảnh hưởng, dùng student01 đặt trước một xe rồi chuyển operator01 và báo sự cố đúng xe đó. Hồ sơ có đơn AFFECTED. Chọn thay xe hoặc hủy trước khi nghiệm thu.

@@ -80,7 +80,22 @@ export function hubMetrics(state, hubId, now) {
 }
 
 export function networkSnapshot(state, now) {
-  const hubs = state.hubs.map((hub) => ({ ...hub, ...hubMetrics(state, hub.id, now) }));
+  const timeout = state.config.params.TELEMETRY_TIMEOUT_SEC * 1000;
+  const staleSources = new Set(state.sensors.filter((sensor) =>
+    sensor.type !== "HUB" &&
+    (!sensor.online || !Number.isFinite(sensor.lastSeenAt) || now - sensor.lastSeenAt > timeout)
+  ).map((sensor) => sensor.id));
+  const staleByHub = new Map();
+  for (const resource of [...state.vehicles, ...state.slots, ...state.ports]) {
+    if (!resource.hubId || (!resource.sensorOffline && !staleSources.has(resource.id))) continue;
+    if (!staleByHub.has(resource.hubId)) staleByHub.set(resource.hubId, []);
+    staleByHub.get(resource.hubId).push(resource.id);
+  }
+  const hubs = state.hubs.map((hub) => ({
+    ...hub,
+    ...hubMetrics(state, hub.id, now),
+    staleSensorIds: staleByHub.get(hub.id) ?? [],
+  }));
   return {
     snapshotAt: now,
     hubs,

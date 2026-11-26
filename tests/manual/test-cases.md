@@ -21,13 +21,13 @@ Khôi phục seed trước mỗi nhóm nếu muốn có trạng thái ban đầu
 | M15 | Đơn đỗ đã hết giờ ân hạn | Tăng 15 rồi 1 phút | No-show EXPIRED, cọc khấu trừ một lần, lịch liên quan bị hủy |
 | M16 | H-01 và H-02 online | Tạo lệnh 5 xe, xác nhận rời Hub | Đích giữ 5 chỗ, ô nguồn được giải phóng theo xác nhận |
 | M17 | Lệnh đang vận chuyển | 4 xe đến, 1 xe chưa bàn giao | PARTIALLY_COMPLETED, 4 xe tại đích, chỗ thừa nhả, xe thất bại chờ kiểm tra |
-| M18 | Lệnh PENDING | Hủy lệnh | Xe đủ điều kiện được mở lại, chỗ giữ đích được nhả |
+| M18 | Lệnh PENDING đã gửi phân công | Hủy lệnh, sau đó xác nhận đội đã thu hồi và xe chưa rời Hub | Giữ nguyên ô đích khi chờ xác nhận. Sau xác nhận mới nhả ô và mở lại xe đủ điều kiện |
 | M19 | CHG-01-01 đang sạc | Áp dụng kế hoạch ưu tiên | Lưu kế hoạch và lệnh chờ cho lịch tương lai, phiên đang chạy giữ nguyên |
 | M20 | Xe có đơn đặt trước | Ghi sự cố, cách ly, gửi phiếu lỗi rồi gửi lại | Chặn cấp phát, đơn AFFECTED, mã phiếu nhất quán |
 | M21 | Cổng đang sạc bị báo sự cố | Cách ly ngay | PENDING_CHECK, yêu cầu dừng sạc và rút cáp an toàn trước khi tiếp tục |
 | M22 | Đơn AFFECTED | Thay tài nguyên hoặc hủy, nghiệm thu sửa chữa | Trạng thái đơn có kết quả, thông báo và cọc được xử lý |
 | M23 | Nhu cầu đích 500% | Chạy what-if | Có snapshot, thời gian và đánh dấu dữ liệu cũ, vận hành chưa bị thay đổi |
-| M24 | Có khuyến nghị PENDING | Chọn áp dụng một phần, rồi xử lý bù | Có audit, lệnh PENDING có thể hủy, lệnh đã chạy cần đối soát |
+| M24 | Có khuyến nghị PENDING | Chọn áp dụng một phần, rồi xử lý bù | Có audit, lệnh chưa gửi có thể hủy. Lệnh đã gửi chờ xác nhận thu hồi, lệnh đã chạy cần đối soát |
 | M25 | Snapshot đã có | Thay đổi xe qua điều phối rồi áp dụng khuyến nghị cũ | Revalidation chặn phần không còn hợp lệ |
 | M26 | Có gói telemetry hợp lệ | Gửi lại, gửi cũ, gửi sai | Log phân loại, dữ liệu mới nhất được bảo toàn |
 | M27 | H-01 online | Phát offline, thử commit, sau đó phát live | Dữ liệu cũ có thời điểm, commit bị chặn đến khi có live |

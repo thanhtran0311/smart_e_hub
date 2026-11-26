@@ -400,7 +400,7 @@ const shellCommands = {
   requestReset() {
     showDialog(
       "Khôi phục dữ liệu mẫu?",
-      '<p>Mọi chuyến, lịch đặt, lệnh và thay đổi trong phiên này sẽ được xóa.</p><div class="row">' +
+      '<p>Mọi chuyến, lịch đặt, lệnh và thay đổi dùng chung giữa các tab cùng địa chỉ demo sẽ được xóa.</p><div class="row">' +
         button("Xác nhận khôi phục", "reset") +
         '<button class="btn secondary" data-dialog-close>Giữ phiên hiện tại</button></div>',
     );
@@ -414,31 +414,36 @@ const shellCommands = {
   },
 };
 
-function execute(action, payload = {}) {
+async function execute(action, payload = {}) {
   try {
-    if (Object.hasOwn(shellCommands, action)) {
-      shellCommands[action](payload);
-      return;
-    }
-    const operator = action.includes(".");
-    const user = store.requireRole(operator ? "operator" : "student");
-    refreshTimers();
-    const command = operator ? operatorCommand : studentCommand;
-    const result = store.transaction((state, now) =>
-      command(state, action, payload, { user, now }),
-    );
-    processPendingEffects(store);
-    render();
-    if (action === "bookVehicle") go("student/pickup-return");
-    const error = result?.operationError;
-    notify(
-      typeof result === "string" ? result : error || "Đã ghi nhận thay đổi.",
-      !!error,
-    );
+    await store.withExclusive(() => {
+      if (Object.hasOwn(shellCommands, action)) {
+        shellCommands[action](payload);
+        return;
+      }
+      const operator = action.includes(".");
+      const user = store.requireRole(operator ? "operator" : "student");
+      refreshTimers();
+      const command = operator ? operatorCommand : studentCommand;
+      const result = store.transaction((state, now) =>
+        command(state, action, payload, { user, now }),
+      );
+      processPendingEffects(store);
+      render();
+      if (action === "bookVehicle") go("student/pickup-return");
+      const error = result?.operationError;
+      notify(
+        typeof result === "string" ? result : error || "Đã ghi nhận thay đổi.",
+        !!error,
+      );
+    });
   } catch (error) {
     if (action === "authenticate") {
-      dialog.querySelector(".error-line").textContent = error.message;
-      return;
+      const errorLine = dialog.querySelector(".error-line");
+      if (errorLine) {
+        errorLine.textContent = error.message;
+        return;
+      }
     }
     notify(error.message, true);
   }
@@ -539,23 +544,27 @@ dialog.addEventListener("close", () => {
 
 try {
   store = await loadStore();
-  store.heartbeat();
-  refreshTimers();
-  processPendingEffects(store);
+  await store.withExclusive(() => {
+    store.heartbeat();
+    refreshTimers();
+    processPendingEffects(store);
+  });
   render();
-  setInterval(() => {
+  setInterval(async () => {
     try {
-      store.heartbeat();
-      const statusChanged = refreshTimers();
-      const revision = store.state.revision;
-      processPendingEffects(store);
-      const editing =
-        document.querySelector("main form") ||
-        ["INPUT", "SELECT", "TEXTAREA"].includes(
-          document.activeElement?.tagName,
-        );
-      if (!dialog.open && (statusChanged || store.state.revision !== revision || !editing)) render();
-      else updateChargeReadings();
+      await store.withExclusive(() => {
+        store.heartbeat();
+        const statusChanged = refreshTimers();
+        const revision = store.state.revision;
+        processPendingEffects(store);
+        const editing =
+          document.querySelector("main form") ||
+          ["INPUT", "SELECT", "TEXTAREA"].includes(
+            document.activeElement?.tagName,
+          );
+        if (!dialog.open && (statusChanged || store.state.revision !== revision || !editing)) render();
+        else updateChargeReadings();
+      });
     } catch (error) {
       notify(error.message, true);
     }

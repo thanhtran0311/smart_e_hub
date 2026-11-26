@@ -65,7 +65,7 @@ Các tệp JSON là dữ liệu khởi tạo chỉ đọc. `loadStore()` nạp 2
 
 Snapshot bổ sung `plans`, `deviceCommands` và `sensors`. Phiên schema 1 thiếu các danh sách này được nạp với mảng mặc định. Lệnh thiết bị lưu `id`, `targetId`, `command`, `result`, thời điểm tạo/gửi/hạn/phản hồi và liên kết lịch hoặc kế hoạch khi có. Trạng thái quan sát từ cảm biến ô/cổng được lưu riêng với kết quả giao dịch để giữ bằng chứng đối soát.
 
-Tên tệp và tên collection được ánh xạ tại `src/infrastructure/store.js`. Ví dụ `parking-spaces.json` nạp vào `slots`, `charging-points.json` vào `ports`, `charging-schedules.json` vào `schedules` và `charging-sessions.json` vào `sessions`. Mỗi lần ghi tạo một bản nháp độc lập. Khi việc ghi `ehub_state` thành công, bản nháp trở thành snapshot mới. Dữ liệu chỉ chia sẻ giữa hai phân hệ trong cùng phiên trên cùng trình duyệt.
+Tên tệp và tên collection được ánh xạ tại `src/infrastructure/store.js`. Ví dụ `parking-spaces.json` nạp vào `slots`, `charging-points.json` vào `ports`, `charging-schedules.json` vào `schedules` và `charging-sessions.json` vào `sessions`. Mỗi lần ghi lấy khóa theo origin, đọc lại `ehub_state` và tạo bản nháp từ snapshot mới nhất. Sau commit, các tab cùng origin trong một hồ sơ trình duyệt đọc được bản cập nhật. Phiên đăng nhập lưu riêng theo tab trong `sessionStorage` với khóa `ehub_session_user`.
 
 Góp ý của giảng viên và yêu cầu của bản demo đưa tiền cọc trở lại UC05. Tài khoản lưu `balance` là tổng số dư và `held` là số đang giữ. Số khả dụng bằng `balance - held`. Đơn đỗ lưu chính sách cọc theo lần đặt ở `deposit` và `depositStatus`. UC05 giữ 50.000 đồng cùng giao dịch tạo đơn. Khi nhận ô đúng hạn hoặc hủy hợp lệ, hệ thống giải phóng khoản giữ. Trường hợp quá hạn nhận ô áp dụng quy tắc mất cọc trong demo.
 

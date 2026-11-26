@@ -1,6 +1,7 @@
 import { lookup } from "../domain/resources.js";
 
 const key = "ehub_state";
+const sessionKey = "ehub_session_user";
 const schema = 1;
 
 export const seedFiles = {
@@ -78,35 +79,70 @@ export class OperationalStore {
   #storage;
   #clock;
   #state;
+  #lockManager;
+  #sessionStorage;
+  #locked = false;
   #writing = false;
+
+  static openShared(seed, { storage, sessionStorage, lockManager, now }) {
+    return lockManager.request(key, () => {
+      const store = new OperationalStore(seed, { storage, now });
+      store.#lockManager = lockManager;
+      store.#sessionStorage = sessionStorage;
+      store.#state = immutable({
+        ...store.state,
+        userId: sessionStorage.getItem(sessionKey),
+      });
+      return store;
+    });
+  }
+
   constructor(seed, { storage = null, now = Date.now } = {}) {
     this.#seed = structuredClone(seed);
     this.#storage = storage;
     this.#clock = now;
-    const raw = storage?.getItem(key);
-    if (raw) {
-      let saved;
-      try {
-        saved = JSON.parse(raw);
-      } catch {
-        /* Recover from an interrupted or obsolete demo. */
-      }
-      if (
-        saved?.schema === schema &&
-        Object.entries(seedFiles).every(([prop]) =>
-          prop === "config" ? saved.config?.params : Array.isArray(saved[prop]),
-        ) &&
-        Number.isFinite(saved.offsetMs)
-      )
-        this.#state = immutable(withRuntimeCollections({
-          ...saved,
-          hubs: saved.hubs.map((hub) => {
-            const origin = this.#seed.hubs.find((row) => row.id === hub.id);
-            return { lat: origin?.lat, lon: origin?.lon, ...hub };
-          }),
-        }));
-    }
+    this.#state = this.#readSaved();
     if (!this.#state) this.reset();
+  }
+
+  #readSaved() {
+    const raw = this.#storage?.getItem(key);
+    let saved;
+    try {
+      if (raw) saved = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (
+      saved?.schema !== schema ||
+      !Object.keys(seedFiles).every((prop) =>
+        prop === "config" ? saved.config?.params : Array.isArray(saved[prop]),
+      ) ||
+      !Number.isFinite(saved.offsetMs)
+    ) return null;
+
+    return immutable(withRuntimeCollections({
+      ...saved,
+      userId: this.#sessionStorage ? this.#sessionStorage.getItem(sessionKey) : saved.userId,
+      hubs: saved.hubs.map((hub) => {
+        const origin = this.#seed.hubs.find((row) => row.id === hub.id);
+        return { lat: origin?.lat, lon: origin?.lon, ...hub };
+      }),
+    }));
+  }
+
+  // Refresh inside the origin-wide lock so validation sees the last committed snapshot.
+  withExclusive(change) {
+    if (!this.#lockManager) return change();
+    return this.#lockManager.request(key, async () => {
+      this.#locked = true;
+      try {
+        this.#state = this.#readSaved() ?? immutable(this.#initialState(this.state.userId));
+        return await change();
+      } finally {
+        this.#locked = false;
+      }
+    });
   }
 
   get state() {
@@ -125,7 +161,8 @@ export class OperationalStore {
   #persist(next) {
     // A quota error leaves the previous in-memory snapshot and disk snapshot untouched.
     try {
-      this.#storage?.setItem(key, JSON.stringify(next));
+      const stored = this.#sessionStorage ? { ...next, userId: null } : next;
+      this.#storage?.setItem(key, JSON.stringify(stored));
     } catch {
       throw new Error(
         "Không lưu được trạng thái demo. Kiểm tra dung lượng hoặc quyền lưu trữ.",
@@ -133,7 +170,14 @@ export class OperationalStore {
     }
     this.#state = immutable(next);
   }
+
+  #requireLock() {
+    if (this.#lockManager && !this.#locked)
+      throw new Error("Thay đổi dữ liệu dùng chung cần được thực hiện trong khóa.");
+  }
+
   transaction(change) {
+    this.#requireLock();
     if (this.#writing) throw new Error("Giao dịch lồng nhau không hợp lệ.");
     this.#writing = true;
     try {
@@ -147,16 +191,34 @@ export class OperationalStore {
       this.#writing = false;
     }
   }
-  reset() {
-    const initial = seedTime(this.#seed, this.#clock());
-    this.#persist(withRuntimeCollections({
-      ...initial,
+  #initialState(userId) {
+    return withRuntimeCollections({
+      ...seedTime(this.#seed, this.#clock()),
       schema,
       offsetMs: 0,
       revision: 0,
-      userId: null,
-    }));
+      userId,
+    });
   }
+
+  reset() {
+    this.#requireLock();
+    this.#persist(this.#initialState(null));
+    this.#sessionStorage?.removeItem(sessionKey);
+  }
+
+  #setUserId(userId) {
+    if (this.#sessionStorage) {
+      if (userId) this.#sessionStorage.setItem(sessionKey, userId);
+      else this.#sessionStorage.removeItem(sessionKey);
+      this.#state = immutable({ ...this.state, userId });
+    } else {
+      this.transaction((draft) => {
+        draft.userId = userId;
+      });
+    }
+  }
+
   login(username, password, role) {
     const userId = AuthService.authenticate(
       this.state.users,
@@ -164,15 +226,11 @@ export class OperationalStore {
       password,
     );
     if (role) AuthService.requireRole(lookup(this.state.users, userId), role);
-    this.transaction((draft) => {
-      draft.userId = userId;
-    });
+    this.#setUserId(userId);
     return lookup(this.state.users, userId);
   }
   logout() {
-    this.transaction((draft) => {
-      draft.userId = null;
-    });
+    this.#setUserId(null);
   }
   heartbeat() {
     this.transaction((draft, now) => updateHeartbeats(draft, now));
@@ -194,6 +252,8 @@ function updateHeartbeats(draft, time) {
 }
 
 export async function loadStore() {
+  if (!navigator.locks)
+    throw new Error("Trình duyệt cần hỗ trợ Web Locks. Hãy mở demo trên localhost hoặc 127.0.0.1.");
   const entries = await Promise.all(
     Object.entries(seedFiles).map(async ([collection, name]) => {
       const response = await fetch(
@@ -204,7 +264,9 @@ export async function loadStore() {
       return [collection, await response.json()];
     }),
   );
-  return new OperationalStore(Object.fromEntries(entries), {
+  return OperationalStore.openShared(Object.fromEntries(entries), {
     storage: window.localStorage,
+    sessionStorage: window.sessionStorage,
+    lockManager: navigator.locks,
   });
 }

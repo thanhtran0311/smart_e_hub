@@ -73,7 +73,8 @@ export function runSimulation(state, input, { user, now }) {
     ...params,
     id: uid("SIM"), status: SIMULATION_STATUS.COMPLETED, userId: user.id,
     templateId: saved?.id ?? null, snapshot, forecast, bottlenecks, createdAt: now,
-    confidence: snapshot.every((hub) => hub.online) ? "HIGH" : "LIMITED",
+    confidence: snapshot.every((hub) => hub.online && hub.staleSensorIds.length === 0)
+      ? "HIGH" : "LIMITED",
   };
   state.scenarios.push(scenario);
   return scenario;

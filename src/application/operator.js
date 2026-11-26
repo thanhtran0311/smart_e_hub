@@ -7,7 +7,10 @@ import {
 } from "../domain/resources.js";
 import {
   chargingWindowAvailable,
+  parkingWindowAvailable,
   parkedVehicleReady,
+  releaseVehicleHold,
+  usable,
 } from "../domain/student-rules.js";
 import { recordIncident } from "../domain/incidents.js";
 import { appendNotification, notifyRedirect } from "../domain/notifications.js";
@@ -27,7 +30,6 @@ const touch = (row, now) => {
   row.updatedAt = now;
 };
 const activeSchedules = new Set(ACTIVE_CHARGING);
-const overlaps = (a, b, c, d) => a < d && c < b;
 const byId = (rows, id) => {
   const item = rows.find((r) => r.id === id);
   check(item, "Không tìm thấy bản ghi " + id);
@@ -114,6 +116,33 @@ function createOrder(s, p, { now }) {
   return order;
 }
 
+function cancelDispatchOrder(state, order, now) {
+  order.status = "CANCELLED";
+  order.closedAt = now;
+  for (const item of order.items) {
+    const slot = byId(state.slots, item.slotId);
+    if (slot.holdId === order.id) {
+      slot.holdId = null;
+      touch(slot, now);
+    }
+    const vehicle = byId(state.vehicles, item.vehicleId);
+    if (vehicle.status === "RELOCATING") {
+      const safe = vehicle.slotId === item.originSlotId && vehicle.locked !== false &&
+        parkedVehicleReady(state, { ...vehicle, status: "AVAILABLE" }, now);
+      vehicle.status = safe ? "AVAILABLE" : "PENDING_CHECK";
+      touch(vehicle, now);
+    }
+    item.status = "CANCELLED";
+  }
+  for (const item of state.recommendations.filter((row) =>
+    row.orderId === order.id && ["APPLIED", "PENDING_CHECK"].includes(row.status)
+  )) {
+    item.status = "COMPENSATED";
+    item.note = "Lệnh điều phối đã hủy và đã nhả chỗ.";
+  }
+  return "Đã hủy lệnh và giải phóng chỗ giữ.";
+}
+
 function changeOrder(s, action, p, ctx) {
   const { now } = ctx;
   if (action === "create")
@@ -123,63 +152,74 @@ function changeOrder(s, action, p, ctx) {
       " và giữ chỗ tại Hub đích."
     );
   const o = byId(s.orders, p.id);
-  if (action === "start" || action === "cancel") {
+  if (action === "cancel") {
     check(o.status === "PENDING", "Lệnh đã bắt đầu hoặc đã đóng.");
-    if (action === "start") {
-      check(!o.assignmentStatus || o.assignmentStatus === "SENT", "Chưa gửi phân công cho đội vận chuyển.");
-      guardHubOnline(s, o.sourceId, now);
-      guardHubOnline(s, o.destId, now);
-      check(
-        o.items.every((i) => {
-          const v = byId(s.vehicles, i.vehicleId),
-            x = byId(s.slots, i.originSlotId),
-            target = byId(s.slots, i.slotId);
-          return (
-            !v.blocked &&
-            !v.sensorOffline &&
-            !x.blocked &&
-            !x.sensorOffline &&
-            x.vehicleId === v.id &&
-            x.sensorOccupied !== false &&
-            target.hubId === o.destId &&
-            target.holdId === o.id &&
-            !target.blocked &&
-            !target.sensorOffline &&
-            !target.vehicleId &&
-            !target.sensorOccupied &&
-            target.status === "AVAILABLE" &&
-            v.status === "RELOCATING"
-          );
-        }),
-        "Tài nguyên đã thay đổi hoặc đang bị cách ly.",
-      );
-    }
-    o.status = action === "start" ? "IN_TRANSIT" : "CANCELLED";
-    if (action === "cancel" && o.assignmentStatus === "PENDING")
+    if (o.assignmentStatus === "PENDING") {
       o.assignmentStatus = "CANCELLED";
+      return cancelDispatchOrder(s, o, now);
+    }
+    if (o.assignmentStatus !== "RECALL_REQUESTED") {
+      o.assignmentStatus = "RECALL_REQUESTED";
+      o.recallRequestedAt = now;
+    }
+    return "Đang chờ đội vận chuyển xác nhận thu hồi. Các ô đích vẫn được giữ.";
+  }
+  if (action === "confirmRecall") {
+    if (o.status === "CANCELLED" && o.assignmentStatus === "RECALLED")
+      return "Đội vận chuyển đã xác nhận thu hồi lệnh này.";
+    check(o.status === "PENDING" && o.assignmentStatus === "RECALL_REQUESTED",
+      "Lệnh chưa yêu cầu thu hồi hoặc xe đã rời Hub.");
+    o.assignmentStatus = "RECALLED";
+    o.recallConfirmedAt = now;
+    return cancelDispatchOrder(s, o, now);
+  }
+  if (action === "start") {
+    check(o.status === "PENDING", "Lệnh đã bắt đầu hoặc đã đóng.");
+    check(o.assignmentStatus !== "PENDING", "Chưa gửi phân công cho đội vận chuyển.");
+    guardHubOnline(s, o.sourceId, now);
+    guardHubOnline(s, o.destId, now);
+    check(
+      o.items.every((i) => {
+        const v = byId(s.vehicles, i.vehicleId),
+          x = byId(s.slots, i.originSlotId),
+          target = byId(s.slots, i.slotId);
+        return (
+          !v.blocked &&
+          !v.sensorOffline &&
+          !x.blocked &&
+          !x.sensorOffline &&
+          x.vehicleId === v.id &&
+          x.sensorOccupied !== false &&
+          target.hubId === o.destId &&
+          target.holdId === o.id &&
+          !target.blocked &&
+          !target.sensorOffline &&
+          !target.vehicleId &&
+          !target.sensorOccupied &&
+          target.status === "AVAILABLE" &&
+          v.status === "RELOCATING"
+        );
+      }),
+      "Tài nguyên đã thay đổi hoặc đang bị cách ly.",
+    );
+    if (o.assignmentStatus === "RECALL_REQUESTED") {
+      o.assignmentStatus = "SENT";
+      const rec = s.recommendations.find((item) => item.orderId === o.id && item.status === "PENDING_CHECK");
+      if (rec) rec.note = "Xe đã rời Hub. Cần đối soát từng xe trước khi lập lệnh phục hồi.";
+    }
+    o.status = "IN_TRANSIT";
     for (const i of o.items) {
-      const v = byId(s.vehicles, i.vehicleId);
-      if (action === "start") {
-        const x = byId(s.slots, i.originSlotId);
-        x.vehicleId = null;
-        x.sensorOccupied = false;
-        x.status = "AVAILABLE";
-        touch(x, now);
-        v.slotId = null;
-        v.hubId = null;
-      } else {
-        const x = byId(s.slots, i.slotId);
-        if (x.holdId === o.id) x.holdId = null;
-        touch(x, now);
-        if (v.status === "RELOCATING")
-          v.status = v.blocked ? "PENDING_CHECK" : "AVAILABLE";
-      }
+      const v = byId(s.vehicles, i.vehicleId), x = byId(s.slots, i.originSlotId);
+      x.vehicleId = null;
+      x.sensorOccupied = false;
+      x.status = "AVAILABLE";
+      touch(x, now);
+      v.slotId = null;
+      v.hubId = null;
       touch(v, now);
       i.status = o.status;
     }
-    return action === "start"
-      ? "Đã xác nhận xe rời Hub nguồn."
-      : "Đã hủy lệnh và giải phóng chỗ giữ.";
+    return "Đã xác nhận xe rời Hub nguồn.";
   }
   check(
     action === "receive" && o.status === "IN_TRANSIT",
@@ -468,6 +508,7 @@ function handleIncident(s, act, p, { now }) {
   );
   const b = byId([...s.reservations, ...s.schedules], p.recordId);
   check(b.status === "AFFECTED", "Đặt chỗ đã được xử lý.");
+  const originalBooking = { ...b };
   if (p.decision === "CANCELLED") {
     if (b.depositStatus === "HELD") {
       byId(s.users, b.userId).held -= b.deposit;
@@ -502,7 +543,7 @@ function handleIncident(s, act, p, { now }) {
       "Chọn cách xử lý lịch.",
     );
     check(
-      !dest.blocked && dest.hubId === b.hubId,
+      usable(dest) && dest.hubId === b.hubId,
       "Chọn tài nguyên an toàn cùng Hub.",
     );
     guardHubOnline(s, dest.hubId, now);
@@ -546,20 +587,8 @@ function handleIncident(s, act, p, { now }) {
           "Khung giờ mới ngoài đơn đỗ xe.",
         );
         chargingWindowAvailable(s, dest, b.vehicleId, start, end, now);
-      }
-      check(
-        ![...s.reservations, ...s.schedules].some(
-          (r) =>
-            r !== b &&
-            r[key] === dest.id &&
-            ["CONFIRMED", "CHECKED_IN", ...activeSchedules].includes(
-              r.status,
-            ) &&
-            overlaps(start, end, r.start, r.end),
-        ),
-        "Khung giờ thay thế trùng lịch.",
-      );
-      if (key === "slotId")
+      } else {
+        parkingWindowAvailable(s, dest, b.vehicleId, start, end, now);
         check(
           !s.schedules.some(
             (r) =>
@@ -569,10 +598,11 @@ function handleIncident(s, act, p, { now }) {
           ),
           "Lịch sạc liên quan nằm ngoài khung giờ mới.",
         );
+      }
       b.start = start;
       b.end = end;
       if (key === "slotId")
-        b.expiresAt = start + s.config.params.T_GRACE_MIN * MINUTE;
+        b.expiresAt = Math.min(end, start + s.config.params.T_GRACE_MIN * MINUTE);
     }
     b[key] = dest.id;
     b.status = p.decision;
@@ -583,12 +613,11 @@ function handleIncident(s, act, p, { now }) {
       (v) =>
         v.reservationId === b.id &&
         (p.decision === "CANCELLED" || v.id !== b.vehicleId),
-    )) {
-      old.reservationId = null;
-      if (old.status === "RESERVED")
-        old.status = old.blocked ? "PENDING_CHECK" : "AVAILABLE";
-      touch(old, now);
-    }
+    )) releaseVehicleHold(s, old, originalBooking, now);
+  if (b.type === "PARKING") {
+    for (const slot of s.slots.filter((row) => row.id === b.slotId || row.id === originalBooking.slotId))
+      touch(slot, now);
+  }
   b.remedyStatus = p.decision;
   touch(b, now);
   s.notifications.push({
@@ -693,8 +722,17 @@ function recommendation(s, action, p, ctx) {
     if (r.type === "REDISTRIBUTE") {
       const order = byId(s.orders, r.orderId);
       if (order.status === "PENDING") {
-        changeOrder(s, "cancel", { id: order.id }, ctx);
-        r.status = "COMPENSATED";
+        const message = changeOrder(s, "cancel", { id: order.id }, ctx);
+        if (order.status !== "CANCELLED") {
+          r.status = "PENDING_CHECK";
+          r.note = message;
+        }
+      } else if (order.status === "CANCELLED") {
+        // Older snapshots can contain a cancelled order and a still-sent assignment.
+        const confirmed = ["CANCELLED", "RECALLED"].includes(order.assignmentStatus);
+        r.status = confirmed ? "COMPENSATED" : "PENDING_CHECK";
+        r.note = confirmed ? "Lệnh điều phối đã hủy."
+          : "Lệnh đã hủy trong dữ liệu cũ. Cần đối soát việc thu hồi phân công.";
       } else {
         r.status = "PENDING_CHECK";
         r.note = "Đã vận chuyển. Đối soát từng xe trước khi lập lệnh phục hồi.";
