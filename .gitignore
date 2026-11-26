@@ -1,9 +1,43 @@
+# Dependencies, build output, and test reports
 node_modules/
+build/
 dist/
 coverage/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Python environments and local caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+
+# Local environment and credentials
 .env
 .env.*
 !.env.example
-*.log
+.aws/
+.secrets/
+.netrc
+.npmrc.local
+secrets.local.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Editor, OS, and temporary files
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
+Desktop.ini
+*.log
+*.tmp
+*.swp
+~$*
