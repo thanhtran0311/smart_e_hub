@@ -4,7 +4,7 @@ Kiểm tra ngày 26 tháng 11 năm 2026, múi giờ Asia/Saigon. Phạm vi là S
 
 ## Kiểm thử tự động
 
-Chạy `node --test tests/*.test.mjs` với Node.js 24.11.1. Kết quả **31 đạt, 0 lỗi, 0 bỏ qua**.
+Chạy `node --test "tests/node/*.test.mjs"` với Node.js 24.11.1. Kết quả **31 đạt, 0 lỗi, 0 bỏ qua**.
 
 | Bộ test | Số ca | Hành vi đã kiểm tra |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ Chạy `node --test tests/*.test.mjs` với Node.js 24.11.1. Kết quả **31 đ
 
 ## Trình duyệt
 
-Chạy `node tests/browser-smoke.mjs` trên Edge headless qua Playwright, máy chủ Node tĩnh lắng nghe ở `http://127.0.0.1:8174/`. Kết quả **6/6 nhóm đạt**, desktop 1365 × 920 và mobile 390 × 844.
+Chạy `node tests/browser/browser-smoke.mjs` trên Edge headless qua Playwright, máy chủ Node tĩnh lắng nghe ở `http://127.0.0.1:8174/`. Kết quả **6/6 nhóm đạt**, desktop 1365 × 920 và mobile 390 × 844.
 
 - Tìm Hub, lọc bán kính, đặt E-102, xác nhận khóa, rời ô, tải lại và trả xe.
 - Giữ cọc, check-in, đặt cổng, ghi kWh, ngắt điện rồi rút cáp.

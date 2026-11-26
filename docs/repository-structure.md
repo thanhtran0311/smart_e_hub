@@ -20,6 +20,7 @@ smart_e_hub/
 │   │   ├── student.js, operator.js   Handler UC01–UC14
 │   │   ├── charging.js              Cấp/ngắt điện và số liệu phiên
 │   │   ├── device-control.js        Gắn kết quả lệnh vào hồ sơ nghiệp vụ
+│   │   ├── monitoring.js           Giám sát mạng lưới
 │   │   ├── pending-effects.js       Xử lý lệnh và phân công đã commit
 │   │   ├── simulation.js            Mẫu, snapshot, dự báo và điểm nghẽn
 │   │   └── telemetry.js             Gói tin, cảm biến và thời hạn dữ liệu
@@ -27,10 +28,13 @@ smart_e_hub/
 │   ├── infrastructure/              OperationalStore, AuthService, DeviceControlGateway
 │   ├── utils/status.js              Mã trạng thái và nhóm trạng thái hoạt động
 │   └── styles/                       CSS và font
-├── tests/                            Test Node, Playwright và ca thủ công
+├── tests/
+│   ├── browser/                      Kiểm tra luồng giao diện bằng Playwright
+│   ├── manual/                       Danh mục ca kiểm tra thủ công
+│   └── node/                         Kiểm thử nghiệp vụ và dữ liệu bằng Node
 └── docs/
-    ├── references/submission-3.pdf   PDF thiết kế tham chiếu
-    ├── submission-3/                 Deployment, Implementation, lớp, phương thức và PlantUML
+    ├── references/                   PDF thiết kế, mockup và bản đồ tham chiếu
+    ├── submission-3/                 Thiết kế, PlantUML và bằng chứng trong audit/
     ├── data-schema.md, uc-catalog.md
     ├── final/                        Kịch bản demo, xác minh và tài liệu bàn giao
     └── team/                         Phân công và ghi chép nhóm
@@ -51,4 +55,4 @@ OperationalStore sao chép trạng thái thành draft, chạy validation và m�
 
 Mã nguồn có đủ 44 lớp mang tên trong Submit 3. Controller nhận thao tác qua router và event handler. Các thực thể Domain tham chiếu bằng ID và giữ cùng định dạng JSON khi lưu. Store khôi phục kiểu lớp khi đọc dữ liệu hoặc tạo bản nháp giao dịch. Lệnh điều phối và kế hoạch sạc lưu hàng đợi trước khi xử lý phản hồi mô phỏng sau commit.
 
-Xem [Implementation View](docs/submission-3/development-view.md), [tài liệu 44 lớp và 184 phương thức](docs/submission-3/class-and-method-descriptions.md) và [ánh xạ dữ liệu](docs/submission-3/class-model-fixes.md).
+Xem [Implementation View](submission-3/development-view.md), [tài liệu 44 lớp và 184 phương thức](submission-3/class-and-method-descriptions.md) và [ánh xạ dữ liệu](submission-3/class-model-fixes.md).

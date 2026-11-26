@@ -71,7 +71,7 @@ Kịch bản xuyên suốt nằm trong [docs/final/demo-script.md](docs/final/de
 Kiểm thử nghiệp vụ chỉ cần Node.js 22 trở lên và thư viện chuẩn.
 
 ```powershell
-node --test tests/*.test.mjs
+node --test "tests/node/*.test.mjs"
 ```
 
 Các ca kiểm thử bao gồm tranh cùng tài nguyên, check-in sát hạn, lỗi ghi giữa giao dịch, đổi chốt trả, một xe chiếm ô, điều phối 4/5 xe, ô đích bị cách ly, lệnh sạc sau commit, phiên sạc lỗi, phiếu bảo trì gửi lại, dữ liệu mô phỏng cũ và telemetry cảm biến.
@@ -81,7 +81,7 @@ Kiểm thử trình duyệt là công cụ phát triển tùy chọn. Nó dùng 
 ```powershell
 $env:PLAYWRIGHT_MODULE='C:/duong-dan-toi/playwright'
 $env:DEMO_URL='http://127.0.0.1:8000'
-node tests/browser-smoke.mjs
+node tests/browser/browser-smoke.mjs
 ```
 
 Đặt DEMO_SCREENSHOT thành đường dẫn PNG nếu cần chụp màn bản đồ. Mỗi lần kiểm thử dùng browser context riêng, có seed riêng. Kết quả lần chạy bàn giao được ghi trong docs/final/verification.md.

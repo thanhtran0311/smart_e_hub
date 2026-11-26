@@ -1,6 +1,6 @@
-# Đối chiếu giao diện Smart E-Hub với mockup2.html
+# Đối chiếu giao diện Smart E-Hub với mockup.html
 
-`mockup2.html` là tài liệu tham chiếu cho phần trình bày. Script nội tuyến của mockup tạo trạng thái demo cho ảnh đối chiếu. Ứng dụng hiển thị dữ liệu của dự án và tiếp tục gọi các luồng hiện có.
+[Mockup giao diện](../references/mockup.html) là tài liệu tham chiếu cho phần trình bày. Script nội tuyến của mockup tạo trạng thái demo cho ảnh đối chiếu. Ứng dụng hiển thị dữ liệu của dự án và tiếp tục gọi các luồng hiện có.
 
 ## Design token trong mockup
 
@@ -61,4 +61,4 @@ Màu, typography, khoảng cách, bo góc và bóng dùng chung nằm trong [bas
 
 Playwright chụp và đối chiếu 22 ảnh ghép. Kiểm tra thêm lối vào bản đồ công khai, lọc theo tên và theo loại xe ở cả hai kích thước.
 
-`node tests/browser-smoke.mjs` đạt cả năm nhóm trên Edge, gồm đặt–nhận–trả xe, đỗ và sạc, điều phối, lịch sạc, sự cố, telemetry và điều hướng di động. `node --test tests/*.test.mjs` đạt 20/20 ca.
+`node tests/browser/browser-smoke.mjs` đạt cả năm nhóm trên Edge, gồm đặt–nhận–trả xe, đỗ và sạc, điều phối, lịch sạc, sự cố, telemetry và điều hướng di động. `node --test "tests/node/*.test.mjs"` đạt 20/20 ca.

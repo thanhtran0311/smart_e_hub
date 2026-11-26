@@ -5,12 +5,12 @@ import {
   operatorCommand,
   previewDispatch,
   proposeSchedule,
-} from "../src/application/operator.js";
-import { operatorView } from "../src/pages/operator/views.js";
-import { hubMetrics } from "../src/domain/resources.js";
-import { processPendingEffects } from "../src/application/pending-effects.js";
-import { studentCommand } from "../src/application/student.js";
-import { checkSensorTimeouts, triggerRebalanceAlertIfNeeded } from "../src/application/telemetry.js";
+} from "../../src/application/operator.js";
+import { operatorView } from "../../src/pages/operator/views.js";
+import { hubMetrics } from "../../src/domain/resources.js";
+import { processPendingEffects } from "../../src/application/pending-effects.js";
+import { studentCommand } from "../../src/application/student.js";
+import { checkSensorTimeouts, triggerRebalanceAlertIfNeeded } from "../../src/application/telemetry.js";
 
 async function setup() {
   let tick = 1770000000000;
@@ -127,7 +127,7 @@ test("UC11 blocks allocations, requires physical safety, records affected bookin
     store.state.ports.find((x) => x.id === targetId).status,
     "CHARGING",
   );
-  const { studentCommand } = await import("../src/application/student.js");
+  const { studentCommand } = await import("../../src/application/student.js");
   const active = store.state.sessions.find((x) => x.status === "CHARGING"),
     user = store.state.users.find((u) => u.id === active.userId);
   store.login(user.username, user.password);

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { demoStore } from "./seed.mjs";
-import { operatorCommand } from "../src/application/operator.js";
+import { operatorCommand } from "../../src/application/operator.js";
 import {
   studentCommand,
   expireStudentHolds,
@@ -9,7 +9,7 @@ import {
   chargeReading,
   getNearbyHubs,
   validateBooking,
-} from "../src/application/student.js";
+} from "../../src/application/student.js";
 
 const epoch = Date.UTC(2026, 10, 25, 1);
 const minute = 60000;

@@ -1,18 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { OperationalStore } from "../src/infrastructure/store.js";
+import { OperationalStore } from "../../src/infrastructure/store.js";
 import {
   ChargingCommand, ChargingPlan, Hub, ParkingReservation, PrivateVehicle,
   Reservation, SharedVehicle, User, Vehicle,
-} from "../src/domain/entities.js";
+} from "../../src/domain/entities.js";
 import {
   isHubOnline,
   slotAvailable,
   hubMetrics,
-} from "../src/domain/resources.js";
+} from "../../src/domain/resources.js";
 import { readSeed, demoStore } from "./seed.mjs";
-import { operatorCommand, proposeSchedule } from "../src/application/operator.js";
-import { studentCommand } from "../src/application/student.js";
+import { operatorCommand, proposeSchedule } from "../../src/application/operator.js";
+import { studentCommand } from "../../src/application/student.js";
 
 test("Seed mô tả xe, vị trí, tài khoản, phiên sạc và lịch tương lai nhất quán", async () => {
   const store = await demoStore();
