@@ -33,6 +33,9 @@ try {
     await panel(action).locator("button[type=submit]").first().click();
     await state();
   };
+  const previewVehicle = (tab, id) =>
+    tab.locator(`button[data-command="previewBooking"][data-payload*="${id}"]`);
+  const confirmVehicle = (tab) => tab.locator('dialog button[data-command="bookVehicle"]');
   const studentEntry = page.getByRole("link", { name: "Mở WebApp – Phân hệ Sinh viên" });
   const studentLogin = page.getByRole("dialog", { name: "Phân hệ Sinh viên" });
   const link = async (key) => {
@@ -127,9 +130,9 @@ try {
   assert.equal(await page.locator(".hub-choice").count(), 1);
   await page.locator("select[name=nearbyHub]").selectOption("");
   await page.setViewportSize({ width: 390, height: 844 });
-  await page
-    .locator('button[data-command="bookVehicle"][data-payload*="E-102"]')
-    .click();
+  await previewVehicle(page, "E-102").click();
+  assert.equal((await state()).reservations.some((row) => row.vehicleId === "E-102"), false);
+  await confirmVehicle(page).click();
   await panel("beginPickup").locator("[name=code]").fill("E-102");
   await send("beginPickup");
   await send("unlockAck");
@@ -144,6 +147,30 @@ try {
   await send("finishReturn");
   assert.equal((await state()).trips.at(-1).status, "COMPLETED");
   console.log("PASS · tra cứu, đặt, mở khóa, rời ô, tải lại, trả xe");
+
+  await link("student/hub-search");
+  await page.locator(".hub-choice[value='H-03']").click();
+  await previewVehicle(page, "E-304").click();
+  await confirmVehicle(page).click();
+  await panel("beginPickup").locator("[name=code]").fill("E-304");
+  await send("beginPickup");
+  assert.equal(await panel("unlockAck").count(), 0);
+  await panel("stopChargingSafely").locator("[name=outcome]").selectOption("timeout");
+  await send("stopChargingSafely");
+  await page.getByText("Thiết bị chưa phản hồi. Kiểm tra cảm biến trước khi thử lại.").first().waitFor();
+  await panel("stopChargingSafely").locator("[name=outcome]").selectOption("ok");
+  await send("stopChargingSafely");
+  assert.equal(await panel("unlockAck").count(), 0);
+  await btn("disconnectPickupCharger").click();
+  await send("unlockAck");
+  await btn("confirmPickup").click();
+  assert.equal((await state()).trips.at(-1).vehicleId, "E-304");
+  await btn("leaveSlot").click();
+  await panel("requestReturn").locator("[name=hubId]").selectOption("H-03");
+  await send("requestReturn");
+  await send("lockReturn");
+  await send("finishReturn");
+  console.log("PASS · xe đang sạc giữ khóa khi timeout, rút cáp rồi mới mở khóa");
   await link("student/parking-charging");
   const parking = panel("bookParking");
   const slot = (await state()).slots.find(
@@ -243,6 +270,10 @@ try {
   await link("operator/incidents");
   await panel("incident.open").locator("[name=reason]").fill("Kiểm tra khóa");
   await send("incident.open");
+  await page.getByText("Phân loại và xếp mức độ", { exact: true }).first().click();
+  await panel("incident.classify").locator("[name=severity]").selectOption("CRITICAL");
+  await send("incident.classify");
+  assert.equal((await state()).incidents.at(-1).severity, "CRITICAL");
   assert.ok((await state()).incidents.length);
   await link("operator/network-dashboard");
   const hubRows = page.locator('section[aria-label="Tình trạng từng Hub"] tbody tr');
@@ -295,16 +326,15 @@ try {
     const tabs = await Promise.all([bookingContext.newPage(), bookingContext.newPage()]);
     const students = ["student01", "student02"];
     const userIds = ["U-01", "U-03"];
-    const bookButton = (tab) => tab.locator('button[data-command="bookVehicle"][data-payload*="E-102"]');
     await Promise.all(tabs.map(async (tab, index) => {
       await tab.goto(base + "/#/student/hub-search");
       await tab.locator("dialog [name=username]").fill(students[index]);
       await tab.locator('form[data-action="authenticate"] button[type=submit]').click();
-      await bookButton(tab).waitFor();
+      await previewVehicle(tab, "E-102").click();
     }));
-    const payloads = await Promise.all(tabs.map((tab) => bookButton(tab).getAttribute("data-payload")));
+    const payloads = await Promise.all(tabs.map((tab) => confirmVehicle(tab).getAttribute("data-payload")));
     assert.equal(JSON.parse(payloads[0]).expectedVersion, JSON.parse(payloads[1]).expectedVersion);
-    await Promise.all(tabs.map((tab) => bookButton(tab).click()));
+    await Promise.all(tabs.map((tab) => confirmVehicle(tab).click()));
     const snapshots = await Promise.all(tabs.map((tab) => state(tab)));
     const bookings = snapshots[0].reservations.filter((item) => item.vehicleId === "E-102");
     assert.equal(bookings.length, 1);

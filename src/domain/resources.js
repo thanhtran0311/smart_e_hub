@@ -1,3 +1,5 @@
+import { Hub, ParkingSpace } from "./entities.js";
+
 /** Shared rules for the fleet, physical capacity and the simulated network. */
 export function uid(prefix) {
   return prefix + "-" + crypto.randomUUID().slice(0, 12).toUpperCase();
@@ -11,12 +13,7 @@ export function lookup(rows, id) {
 
 export function isHubOnline(state, hubId, now) {
   const hub = lookup(state.hubs, hubId);
-  return (
-    !hub.offline &&
-    Number.isFinite(hub.lastTelemetryAt) &&
-    now - hub.lastTelemetryAt <=
-      state.config.params.TELEMETRY_TIMEOUT_SEC * 1000
-  );
+  return !Hub.prototype.isOffline.call(hub, state.config.params.TELEMETRY_TIMEOUT_SEC, now);
 }
 
 export function guardHubOnline(state, hubId, now) {
@@ -25,14 +22,7 @@ export function guardHubOnline(state, hubId, now) {
 }
 
 export function slotAvailable(state, slot) {
-  return (
-    !slot.vehicleId &&
-    !slot.holdId &&
-    !slot.blocked &&
-    !slot.sensorOffline &&
-    !slot.sensorOccupied &&
-    slot.status === "AVAILABLE"
-  );
+  return ParkingSpace.prototype.canReleaseToAvailable.call(slot);
 }
 
 export function hubMetrics(state, hubId, now) {
@@ -41,28 +31,22 @@ export function hubMetrics(state, hubId, now) {
   const ports = state.ports.filter((row) => row.hubId === hubId);
   const online = isHubOnline(state, hubId, now);
   const occupiedSlots = slots.filter((row) => row.vehicleId || row.sensorOccupied).length;
-  const freeSlots = slots.filter((row) => slotAvailable(state, row)).length;
+  const freeSlots = Hub.prototype.getEmptySpaceCount.call(hub, slots);
   const occupancyRatio = slots.length ? occupiedSlots / slots.length : 0;
   const measured = now - hub.measuredPowerAt <= state.config.params.TELEMETRY_TIMEOUT_SEC * 1000;
   const relayPower = ports.filter((row) => row.relayOn || row.sensorRelayOn)
     .reduce((sum, row) => sum + row.powerKw, 0);
   const currentPowerKw = measured ? Math.max(hub.measuredPowerKw, relayPower) : relayPower;
   const powerLimitKw = state.config.hubPowerLimitKw[hubId];
-  const availableVehicles = state.vehicles.filter(
-    (row) =>
-      row.hubId === hubId &&
-      row.status === "AVAILABLE" &&
-      !row.blocked &&
-      !row.sensorOffline &&
-      row.soc >= state.config.params.MIN_SOC_BOOK_PCT &&
-      slots.some((slot) => slot.id === row.slotId && slot.status === "OCCUPIED" &&
-        slot.vehicleId === row.id && !slot.blocked && !slot.sensorOffline && slot.sensorOccupied !== false),
-  ).length;
-  const loadStatus = !online ? "OFFLINE"
-    : currentPowerKw > powerLimitKw ? "OVERLOAD"
-      : slots.length && (1 - freeSlots / slots.length >= state.config.params.HUB_FULL_RATIO ||
-        availableVehicles / slots.length <= state.config.params.HUB_LOW_AVAIL_RATIO)
-        ? "WARNING" : "NORMAL";
+  const availableVehicles = Hub.prototype.getAvailableVehicleCount.call(
+    hub, state.vehicles, slots, state.config.params.MIN_SOC_BOOK_PCT,
+  );
+  const nearFull = slots.length > 0 && 1 - freeSlots / slots.length >= state.config.params.HUB_FULL_RATIO;
+  const needsRebalance = online && slots.length > 0 &&
+    availableVehicles / slots.length <= state.config.params.HUB_LOW_AVAIL_RATIO;
+  const loadStatus = Hub.prototype.calculateLoadLevel.call(hub, {
+    online, currentPowerKw, powerLimitKw, nearFull, needsRebalance,
+  });
   return {
     availableVehicles,
     totalSlots: slots.length,
@@ -73,6 +57,8 @@ export function hubMetrics(state, hubId, now) {
     freePorts: ports.filter((row) => !row.blocked && !row.sensorOffline && row.status === "AVAILABLE")
       .length,
     online,
+    nearFull,
+    needsRebalance,
     currentPowerKw,
     powerLimitKw,
     loadStatus,

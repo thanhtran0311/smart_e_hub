@@ -11,6 +11,7 @@ import {
   empty,
 } from "../../components/ui.js";
 import { slotAvailable } from "../../domain/resources.js";
+import { ChargingSessionService } from "../../application/charging.js";
 
 const hidden = (key, value) =>
   '<input type="hidden" name="' + esc(key) + '" value="' + esc(value) + '">';
@@ -37,7 +38,22 @@ function heading(id, status, detail) {
   );
 }
 
-function pickupCard(r) {
+function pickupConfirmation(s, r, params, identity) {
+  if (r.status === "UNLOCKED")
+    return button("Xác nhận đã nhận xe", "confirmPickup", params);
+  const connection = ChargingSessionService.chargingConnection(s, r.vehicleId);
+  if (!connection)
+    return form("unlockAck", identity + outcome() + submit("Nhận phản hồi mở khóa"));
+  const { schedule, port } = connection;
+  if (schedule?.status === "CHARGING")
+    return form("stopChargingSafely", identity + outcome() + submit("Yêu cầu ngắt sạc an toàn"));
+  if (["STOPPED", "PLUGGED"].includes(schedule?.status) && port &&
+      !port.relayOn && !port.sensorRelayOn && !port.sensorOffline)
+    return button("Cảm biến xác nhận đã rút cáp", "disconnectPickupCharger", params);
+  return '<p class="muted">Cần đối soát cổng sạc trước khi mở khóa.</p>';
+}
+
+function pickupCard(s, r) {
   const params = { reservationId: r.id };
   const identity = hidden("reservationId", r.id);
   let action;
@@ -55,13 +71,7 @@ function pickupCard(r) {
           submit("Bắt đầu nhận xe", "primary", "unlock"),
       ) + button("Hủy giữ xe", "cancelBooking", params, "secondary");
   } else {
-    action =
-      r.status === "CHECKING_IN"
-        ? form(
-            "unlockAck",
-            identity + outcome() + submit("Nhận phản hồi mở khóa"),
-          )
-        : button("Xác nhận đã nhận xe", "confirmPickup", params);
+    action = pickupConfirmation(s, r, params, identity);
     action +=
       "<details><summary>Báo sự cố khi nhận xe</summary>" +
       form(
@@ -185,7 +195,7 @@ export function tripView(s, user) {
     .reverse();
   const pickups = reservations
     .filter((r) => [...confirmed, "CHECKING_IN", "UNLOCKED"].includes(r.status))
-    .map(pickupCard)
+    .map((r) => pickupCard(s, r))
     .join("");
   const journeys = trips
     .filter((t) => t.status !== "COMPLETED")

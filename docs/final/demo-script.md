@@ -5,13 +5,19 @@ Thời lượng khoảng 10–15 phút. Chạy máy chủ theo README, dùng m�
 ## Thuê xe và kiểm chứng trạng thái vật lý
 
 1. Từ trang giới thiệu, chọn phân hệ Sinh viên và đăng nhập bằng student01. Trên bản đồ, tìm Metro hoặc H-01, thử bộ lọc xe và mức pin rồi chọn lại H-01.
-2. Đặt E-102. Màn Hành trình của tôi xuất hiện đơn với hạn giữ 15 phút.
+2. Chọn Đặt xe cho E-102 để xem Hub, ô, pin và thời gian giữ. Nhấn Xác nhận giữ xe. Màn Nhận & Trả xe hiện đơn với hạn giữ 15 phút.
 3. Nhập E-102 vào mã quét, chọn Bắt đầu nhận xe. Chọn phản hồi thành công và Nhận phản hồi mở khóa.
 4. Xác nhận đã nhận xe. Ô nguồn vẫn đang chứa xe. Nhấn Cảm biến xác nhận xe rời ô. Lúc này ô mới được giải phóng.
 5. Tải lại trang để chứng minh chuyến được giữ. Chọn Ký túc xá Khu A ở Hub muốn trả xe, nhấn Giữ chỗ trả xe.
 6. Giữ mã xe và ô đã được gán, chọn phản hồi thành công, nhấn Xác minh chốt & khóa xe. Sau đó nhấn Đối soát & hoàn tất chuyến.
 7. Chuyến có trạng thái Hoàn tất. Sang bản đồ H-02 để thấy E-102 và số chỗ trống thay đổi.
 8. Đăng xuất student01, đăng nhập operator01 trong cùng tab. Dashboard hiển thị cùng kết quả của chuyến vừa làm. Có thể xuất bản chụp JSON hoặc CSV.
+
+### Nhận xe dùng chung đang sạc
+
+1. Với dữ liệu mẫu mới, đăng nhập student01 và chọn H-03 (Thư viện). Đặt xe E-304, nhập mã xe và bắt đầu nhận.
+2. Chọn Mô phỏng timeout rồi yêu cầu ngắt sạc an toàn. Xe vẫn khóa và cổng tiếp tục cấp điện. Chọn phản hồi thành công và gửi lại yêu cầu.
+3. Sau khi cổng ngắt điện, chọn Cảm biến xác nhận đã rút cáp. Thao tác mở khóa xuất hiện. Xác nhận đã nhận xe để bắt đầu chuyến.
 
 ## Điều phối một phần
 
@@ -41,7 +47,7 @@ Thời lượng khoảng 10–15 phút. Chạy máy chủ theo README, dùng m�
 3. Kết quả nêu thời điểm chụp, độ tin cậy, độ mới của từng Hub và cảm biến có dữ liệu cũ. Xem dự báo xe, ô và sạc, lưu mẫu nếu cần chạy lại. Chọn một hoặc nhiều khuyến nghị để áp dụng. Khi áp dụng khuyến nghị chuyển hướng, mở Thông báo ở phiên Sinh viên.
 4. Chọn Xử lý bù cho khuyến nghị có lệnh đã gửi phân công. Các ô đích vẫn được giữ cho đến khi Operator ghi nhận đội xác nhận thu hồi và xe chưa rời Hub. Với xe đã rời Hub, hệ thống ghi chờ kiểm tra để đối soát từng xe.
 5. Vào Sự cố & bảo trì, chọn một xe AVAILABLE tại H-01 và nhập hiện tượng. Tạo hồ sơ, xác nhận cách ly an toàn.
-6. Thử Mô phỏng gửi lỗi để có phiếu chờ gửi lại, sau đó Gửi phiếu bảo trì. Mã phiếu giữ nguyên. Nhấn Xác nhận sửa xong để hoàn tất.
+6. Mở Phân loại và xếp mức độ, chọn loại và mức nghiêm trọng rồi lưu. Thử Mô phỏng gửi lỗi để có phiếu chờ gửi lại, sau đó Gửi phiếu bảo trì. Đối chiếu mã phiếu và mức ưu tiên. Nhấn Xác nhận sửa xong để hoàn tất.
 7. Để demo đơn bị ảnh hưởng, dùng student01 đặt trước một xe rồi chuyển operator01 và báo sự cố đúng xe đó. Hồ sơ có đơn AFFECTED. Chọn thay xe hoặc hủy trước khi nghiệm thu.
 8. Với cổng đang sạc, Operator chọn **Yêu cầu ngắt điện an toàn** trong hồ sơ. Phiên có sẵn tại CHG-01-01 thuộc **student02** và xe PV-02. Sau khi có xác nhận ngắt, đăng nhập student02 để xác nhận rút cáp, rồi quay về operator01 để cách ly. Xe đang được dùng và ô đang có xe cũng cần hoàn tất luồng sử dụng trước khi cách ly.
 
@@ -52,6 +58,7 @@ Thời lượng khoảng 10–15 phút. Chạy máy chủ theo README, dùng m�
 3. Phát Hub mất kết nối. Dashboard đánh dấu offline, hiển thị dữ liệu gần nhất. Đặt xe, điều phối và lịch sạc liên quan bị chặn khi xác nhận.
 4. Phát Gói hợp lệ / khôi phục kết nối để Hub hoạt động trở lại.
    Chọn một cảm biến ô hoặc cổng, gửi gói hợp lệ rồi tăng hai phút để xem cảnh báo timeout riêng.
+   Trên dashboard, Hub dưới ngưỡng xe khả dụng có nhãn Cần điều phối. Thông báo xuất hiện khi Hub bắt đầu thiếu xe.
 5. Đặt một xe mới bằng student01 rồi tăng 15 phút. Đơn giữ xe hết hạn, xe docked đủ điều kiện được mở lại.
 6. Kiểm tra riêng việc check-in sát hạn bằng cách đặt xe, tăng 14 phút, bắt đầu nhận rồi tăng 1 phút. Check-in đã bắt đầu được bảo vệ trong thời hạn xác nhận riêng. Cần hoàn tất trong 2 phút kể từ khi bắt đầu nhận.
 

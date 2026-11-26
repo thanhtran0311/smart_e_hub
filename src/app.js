@@ -2,11 +2,13 @@ import { loadStore } from "./infrastructure/store.js";
 import {
   studentCommand,
   expireStudentHolds,
-  chargeReading,
+  ReservationService,
 } from "./application/student.js";
+import { ChargingSessionService } from "./application/charging.js";
 import { operatorCommand } from "./application/operator.js";
 import { processPendingEffects } from "./application/pending-effects.js";
-import { checkSensorTimeouts } from "./application/telemetry.js";
+import { TelemetryService } from "./application/telemetry.js";
+import { MonitoringService } from "./application/monitoring.js";
 import { resolveRoute, home } from "./router.js";
 import { hubMetrics } from "./domain/resources.js";
 import {
@@ -314,7 +316,8 @@ function refreshTimers() {
   const alerts = store.state.notifications.length;
   store.transaction((state, now) => {
     expireStudentHolds(state, now);
-    checkSensorTimeouts(state, now);
+    TelemetryService.checkTimeouts(state, now);
+    MonitoringService.triggerRebalanceAlertIfNeeded(state, now);
   });
   const after = store.state.reservations
     .concat(store.state.schedules)
@@ -329,7 +332,7 @@ function updateChargeReadings() {
       (row) => row.id === element.dataset.sessionReading,
     );
     if (!session) continue;
-    const reading = chargeReading(store.state, session, store.now());
+    const reading = ChargingSessionService.chargeReading(store.state, session, store.now());
     element.textContent =
       reading.energyKwh.toLocaleString("vi-VN", { maximumFractionDigits: 3 }) +
       " kWh · " +
@@ -348,6 +351,23 @@ function setUI(key, value) {
 const shellCommands = {
   login() {
     login("student", "student/hub-search");
+  },
+  previewBooking(payload) {
+    const user = store.requireRole("student");
+    refreshTimers();
+    const preview = ReservationService.validateBooking(store.state, payload, { user, now: store.now() });
+    showDialog(
+      "Xác nhận đặt xe " + preview.vehicleId,
+      `<p>${esc(preview.hubName)} · Ô ${esc(preview.slotId)} · Pin ${esc(preview.soc)}%</p>
+      <p>Xe sẽ được giữ trong ${esc(preview.holdMinutes)} phút sau khi xác nhận.</p>
+      <p class="error-line" aria-live="polite"></p>
+      <div class="dialog-actions">
+        <button type="button" class="btn quiet" data-dialog-close>Hủy</button>
+        ${button("Xác nhận giữ xe", "bookVehicle", {
+          vehicleId: preview.vehicleId, hubId: preview.hubId, expectedVersion: preview.expectedVersion,
+        })}
+      </div>`,
+    );
   },
   account() {
     const user = store.user;
@@ -425,12 +445,17 @@ async function execute(action, payload = {}) {
       const user = store.requireRole(operator ? "operator" : "student");
       refreshTimers();
       const command = operator ? operatorCommand : studentCommand;
-      const result = store.transaction((state, now) =>
-        command(state, action, payload, { user, now }),
-      );
+      const result = store.transaction((state, now) => {
+        const result = command(state, action, payload, { user, now });
+        MonitoringService.triggerRebalanceAlertIfNeeded(state, now);
+        return result;
+      });
       processPendingEffects(store);
       render();
-      if (action === "bookVehicle") go("student/pickup-return");
+      if (action === "bookVehicle") {
+        dialog.close();
+        go("student/pickup-return");
+      }
       const error = result?.operationError;
       notify(
         typeof result === "string" ? result : error || "Đã ghi nhận thay đổi.",
@@ -438,7 +463,7 @@ async function execute(action, payload = {}) {
       );
     });
   } catch (error) {
-    if (action === "authenticate") {
+    if (action === "authenticate" || (action === "bookVehicle" && dialog.open)) {
       const errorLine = dialog.querySelector(".error-line");
       if (errorLine) {
         errorLine.textContent = error.message;

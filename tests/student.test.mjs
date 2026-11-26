@@ -8,6 +8,7 @@ import {
   searchHubs,
   chargeReading,
   getNearbyHubs,
+  validateBooking,
 } from "../src/application/student.js";
 
 const epoch = Date.UTC(2026, 10, 25, 1);
@@ -73,6 +74,49 @@ test("UC02–03 check-in trước hạn giữ xe vẫn được tiếp tục khi
   assert.equal(store.state.slots[0].status, "OCCUPIED");
   run("leaveSlot", { tripId: trip.id });
   assert.equal(store.state.slots[0].status, "AVAILABLE");
+});
+
+test("UC02 xem trước không giữ xe và kiểm tra lại version khi xác nhận", async () => {
+  const { store, run } = await setup();
+  const before = store.state;
+  const preview = validateBooking(before, { vehicleId: "E-102", expectedVersion: 1 }, {
+    user: store.user, now: epoch,
+  });
+  assert.equal(preview.expectedVersion, 1);
+  assert.equal(store.state, before);
+  assert.equal(before.vehicles.find((row) => row.id === preview.vehicleId).status, "AVAILABLE");
+  store.transaction((state) => { state.vehicles.find((row) => row.id === preview.vehicleId).version++; });
+  assert.throws(() => run("bookVehicle", preview), /vừa thay đổi/);
+  assert.equal(store.state.reservations.length, before.reservations.length);
+});
+
+test("UC03 chỉ mở khóa xe đang sạc sau xác nhận ngắt điện và rút cáp", async () => {
+  const { store, run } = await setup();
+  const vehicle = () => store.state.vehicles.find((row) => row.id === "E-304");
+  const port = () => store.state.ports.find((row) => row.id === "CHG-03-01");
+  const session = () => store.state.sessions.find((row) => row.id === "CSS-FLEET-01");
+  const { id } = run("bookVehicle", { vehicleId: vehicle().id, expectedVersion: vehicle().version });
+  const input = { reservationId: id, code: vehicle().id };
+  assert.throws(() => run("stopChargingSafely", input), /yêu cầu nhận xe/i);
+  run("beginPickup", input);
+  assert.throws(() => run("unlockAck", input), /rút cáp/);
+  assert.throws(() => run("disconnectPickupCharger", input), /ngắt điện/);
+  const timedOut = run("stopChargingSafely", { ...input, outcome: "timeout" });
+  assert.equal(store.state.deviceCommands.at(-1).id, timedOut.lastChargingControlId);
+  assert.equal(store.state.deviceCommands.at(-1).result, "TIMEOUT");
+  assert.equal(port().relayOn, true);
+  assert.equal(vehicle().locked, true);
+
+  run("stopChargingSafely", input);
+  assert.equal(port().relayOn, false);
+  assert.equal(port().plugged, true);
+  assert.equal(session().status, "STOPPED");
+  assert.throws(() => run("unlockAck", input), /rút cáp/);
+  run("disconnectPickupCharger", input);
+  assert.equal(port().status, "AVAILABLE");
+  assert.equal(session().status, "COMPLETED");
+  run("unlockAck", input);
+  assert.equal(run("confirmPickup", input).vehicleId, vehicle().id);
 });
 
 test("UC04 sau khi khóa, lỗi ghi lúc hoàn tất vẫn giữ bằng chứng cho lần đối soát lại", async () => {
@@ -267,6 +311,7 @@ test("UC05 xe quá giờ vẫn chiếm ô cho đến khi ghi nhận rời ô", a
 
 test("UC05–06 từ chối form có version cũ hoặc thiếu version", async () => {
   const { store, run, parking } = await setup();
+  const scheduleCount = store.state.schedules.length;
   const reservation = parking();
   assert.throws(() => run("bookParking", {
     slotId: reservation.slotId, vehicleId: "PV-01", start: epoch + 90 * minute,
@@ -276,7 +321,7 @@ test("UC05–06 từ chối form có version cũ hoặc thiếu version", async 
   assert.throws(() => run("bookCharging", input), /vừa thay đổi/);
   run("bookCharging", { ...input, expectedVersion: 1 });
   assert.throws(() => run("bookCharging", { ...input, expectedVersion: 1 }), /vừa thay đổi/);
-  assert.equal(store.state.schedules.length, 3);
+  assert.equal(store.state.schedules.length, scheduleCount + 1);
 });
 
 test("UC01 lọc bằng tọa độ, bán kính và số xe sẵn sàng", async () => {

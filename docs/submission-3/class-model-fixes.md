@@ -2,6 +2,8 @@
 
 Tên lớp dưới đây theo [PDF Submit 3](../references/submission-3.pdf). Chữ ký của từng phương thức có trong [tài liệu lớp và phương thức](class-and-method-descriptions.md).
 
+Các thực thể chạy dưới dạng instance của [lớp Domain](../../src/domain/entities.js). `SharedVehicle` và `PrivateVehicle` kế thừa `Vehicle`. Dữ liệu lưu giữ nguyên các khóa JSON, mã trạng thái và tham chiếu bằng ID. Khi đọc dữ liệu cũ hoặc sao chép bản nháp, [store khôi phục kiểu lớp](../../src/infrastructure/operational-snapshot.js) theo collection, riêng `reservations` dựa thêm vào trường `type`.
+
 | Lớp hoặc nhóm lớp | Dữ liệu và hành vi trong SPA |
 | --- | --- |
 | `User`, `AuthService`, `OperationalStore` | `users`, `userId` và `src/infrastructure/store.js`. Vai trò dạng mảng để tài khoản `dual01` demo được hai phân hệ. |
@@ -18,4 +20,4 @@ Tên lớp dưới đây theo [PDF Submit 3](../references/submission-3.pdf). Ch
 
 - `OperationalStore` giao dịch trên draft trong một phiên. Các điều kiện kiểm tra lại, thứ tự cập nhật và bước gửi sau commit mô phỏng hợp đồng thiết kế. Phản hồi thiết bị và đội vận chuyển được tạo cục bộ.
 - UC10 lưu và xếp lịch điện cho cửa sổ đã xác nhận. MVP gửi lệnh bắt đầu cho cổng đủ điều kiện và giữ phiên đang cấp điện. Điều chỉnh vật lý một phiên đang chạy cần xử lý riêng qua lần ngắt an toàn.
-- WorkOrder mô phỏng các mốc gửi, gửi lại và nghiệm thu. Những việc như chấm mức độ ưu tiên, xác thực SSO thật, điều khiển thiết bị vật lý và mô phỏng giao thông hiệu chỉnh bằng dữ liệu thực thuộc thiết kế mục tiêu.
+- WorkOrder dùng mức độ sự cố làm ưu tiên và mô phỏng các mốc gửi, gửi lại và nghiệm thu. Xác thực SSO thật, điều khiển thiết bị vật lý và mô phỏng giao thông hiệu chỉnh bằng dữ liệu thực thuộc thiết kế mục tiêu.

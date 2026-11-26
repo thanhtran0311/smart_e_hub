@@ -1,6 +1,6 @@
 import { badge, button, esc, empty, field, icon, select, vehicleType } from "../../components/ui.js";
 import { campusMap } from "../../components/hub-map.js";
-import { searchHubs } from "../../application/student.js";
+import { HubService } from "../../application/student.js";
 import { hubMetrics } from "../../domain/resources.js";
 
 export function hubSearchField(query = "") {
@@ -38,8 +38,8 @@ function vehicleCard(vehicle, user) {
     </div>
     ${button(
       user ? "Đặt xe" : "Đăng nhập để đặt",
-      user ? "bookVehicle" : "login",
-      { vehicleId: vehicle.id, expectedVersion: vehicle.version },
+      user ? "previewBooking" : "login",
+      { vehicleId: vehicle.id, hubId: vehicle.hubId, expectedVersion: vehicle.version },
       "secondary",
     )}
   </article>`;
@@ -70,7 +70,7 @@ function hubInspector(s, hub, stats, vehicles, user) {
 export function searchView(s, user, ui, now = Date.now()) {
   const center = s.hubs.find((hub) => hub.id === ui.nearbyHub);
   const nearby = center && { lat: center.lat, lon: center.lon, radiusKm: Number(ui.nearbyRadius || 1) };
-  const snapshots = searchHubs(
+  const snapshots = HubService.searchHubs(
     s,
     {
       query: (ui.query || "").trim(),

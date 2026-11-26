@@ -1,3 +1,4 @@
 [
-  {"vehicleId":"PV-02","hubId":"H-01","userId":"U-03","start":"@now-12m","end":null,"version":1,"updatedAt":"@now","id":"CSS-01","portId":"CHG-01-01","scheduleId":"SCH-01","status":"CHARGING","powerKw":7,"energyKwh":1.4}
+  {"vehicleId":"PV-02","hubId":"H-01","userId":"U-03","start":"@now-12m","end":null,"version":1,"updatedAt":"@now","id":"CSS-01","portId":"CHG-01-01","scheduleId":"SCH-01","status":"CHARGING","powerKw":7,"energyKwh":1.4},
+  {"vehicleId":"E-304","hubId":"H-03","userId":null,"start":"@now-10m","end":null,"version":1,"updatedAt":"@now","id":"CSS-FLEET-01","portId":"CHG-03-01","scheduleId":"SCH-FLEET-01","status":"CHARGING","powerKw":7,"energyKwh":1.167}
 ]

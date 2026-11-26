@@ -1,4 +1,5 @@
 import { uid } from "../domain/resources.js";
+import { ChargingCommand } from "../domain/entities.js";
 import { CONTROL_COMMAND, CONTROL_RESULT } from "../utils/status.js";
 
 /** The mock records the simulated response times without blocking the demo. */
@@ -25,14 +26,14 @@ export class DeviceControlGateway {
 }
 
 export function queueControl(state, targetId, command, now, details = {}) {
-  const request = {
+  const request = new ChargingCommand({
     ...details,
     id: uid("CMD"),
     targetId,
     command,
     createdAt: now,
     result: CONTROL_RESULT.PENDING,
-  };
+  });
   state.deviceCommands.push(request);
   return request;
 }

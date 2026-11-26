@@ -1,4 +1,6 @@
 import { lookup } from "../domain/resources.js";
+import { User } from "../domain/entities.js";
+import { cloneOperationalState, hydrateOperationalState } from "./operational-snapshot.js";
 
 const key = "ehub_state";
 const sessionKey = "ehub_session_user";
@@ -65,10 +67,10 @@ export class AuthService {
       (row) => row.username === username && row.password === password,
     );
     if (!account) throw new Error("Tên đăng nhập hoặc mật khẩu chưa đúng.");
-    return account.id;
+    return User.prototype.getUserId.call(account);
   }
   static requireRole(user, role) {
-    if (!user?.roles.includes(role))
+    if (!(user instanceof User ? user.hasPermission(role) : user?.roles.includes(role)))
       throw new Error("Tài khoản chưa có quyền thực hiện thao tác này.");
     return user;
   }
@@ -121,14 +123,14 @@ export class OperationalStore {
       !Number.isFinite(saved.offsetMs)
     ) return null;
 
-    return immutable(withRuntimeCollections({
+    return immutable(hydrateOperationalState(withRuntimeCollections({
       ...saved,
       userId: this.#sessionStorage ? this.#sessionStorage.getItem(sessionKey) : saved.userId,
       hubs: saved.hubs.map((hub) => {
         const origin = this.#seed.hubs.find((row) => row.id === hub.id);
         return { lat: origin?.lat, lon: origin?.lon, ...hub };
       }),
-    }));
+    })));
   }
 
   // Refresh inside the origin-wide lock so validation sees the last committed snapshot.
@@ -159,6 +161,7 @@ export class OperationalStore {
   }
 
   #persist(next) {
+    hydrateOperationalState(next);
     // A quota error leaves the previous in-memory snapshot and disk snapshot untouched.
     try {
       const stored = this.#sessionStorage ? { ...next, userId: null } : next;
@@ -181,7 +184,7 @@ export class OperationalStore {
     if (this.#writing) throw new Error("Giao dịch lồng nhau không hợp lệ.");
     this.#writing = true;
     try {
-      const next = structuredClone(this.state);
+      const next = cloneOperationalState(this.state);
       const value = change(next, this.now());
       if (value?.then) throw new Error("Giao dịch phải kết thúc đồng bộ.");
       next.revision++;
@@ -192,13 +195,13 @@ export class OperationalStore {
     }
   }
   #initialState(userId) {
-    return withRuntimeCollections({
+    return hydrateOperationalState(withRuntimeCollections({
       ...seedTime(this.#seed, this.#clock()),
       schema,
       offsetMs: 0,
       revision: 0,
       userId,
-    });
+    }));
   }
 
   reset() {
@@ -247,7 +250,7 @@ export class OperationalStore {
 
 function updateHeartbeats(draft, time) {
   for (const hub of draft.hubs) {
-    if (!hub.offline) hub.lastTelemetryAt = Math.max(hub.lastTelemetryAt, time);
+    if (!hub.offline) hub.updateTelemetryHeartbeat(time);
   }
 }
 

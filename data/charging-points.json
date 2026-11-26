@@ -5,7 +5,7 @@
   {"id":"CHG-01-04","hubId":"H-01","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
   {"id":"CHG-02-01","hubId":"H-02","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
   {"id":"CHG-02-02","hubId":"H-02","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
-  {"id":"CHG-03-01","hubId":"H-03","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
+  {"id":"CHG-03-01","hubId":"H-03","connector":"TYPE_2","powerKw":7,"status":"CHARGING","blocked":false,"plugged":true,"relayOn":true,"vehicleId":"E-304","sessionId":"CSS-FLEET-01","scheduleId":"SCH-FLEET-01","version":1,"updatedAt":"@now"},
   {"id":"CHG-03-02","hubId":"H-03","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
   {"id":"CHG-04-01","hubId":"H-04","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},
   {"id":"CHG-04-02","hubId":"H-04","connector":"TYPE_2","powerKw":7,"status":"AVAILABLE","blocked":false,"plugged":false,"relayOn":false,"vehicleId":null,"version":1,"updatedAt":"@now"},

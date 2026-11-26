@@ -13,4 +13,4 @@ Presentation gửi thao tác qua handler Application. Application kiểm tra Dom
 
 Luồng điều phối vận chuyển và lịch sạc lưu việc cần làm trong giao dịch tạo lệnh. `processPendingEffects()` đọc những lệnh đã commit, ghi xác nhận phân công mô phỏng hoặc xử lý phản hồi từng cổng. Với lịch sạc tương lai, lệnh có thể chờ đến khi đã vào khung giờ, cáp đã cắm, thiết bị sẵn sàng và công suất còn đủ.
 
-Một số trang gọi hàm đọc của Domain để dựng giao diện. Các lớp nghiệp vụ trong PDF được biểu diễn bằng object JSON, liên kết ID và hàm. Xem [ánh xạ lớp và phương thức](class-and-method-descriptions.md) và [schema thực thi](../data-schema.md).
+Các màn hình gọi controller, dịch vụ hoặc hàm đọc Domain để dựng giao diện. Mã nguồn khai báo đủ 44 lớp của PDF. Các lớp thực thể trong [entities.js](../../src/domain/entities.js) giữ liên kết bằng ID. [OperationalStore](../../src/infrastructure/store.js) dùng [operational-snapshot.js](../../src/infrastructure/operational-snapshot.js) để khôi phục các instance từ JSON và từ bản sao giao dịch. Xem [ánh xạ lớp và phương thức](class-and-method-descriptions.md) và [schema thực thi](../data-schema.md).

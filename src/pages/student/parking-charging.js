@@ -12,7 +12,8 @@ import {
   money,
   icon,
 } from "../../components/ui.js";
-import { chargeReading } from "../../application/student.js";
+import { ChargingScheduleService, ParkingService } from "../../application/student.js";
+import { ChargingSessionService } from "../../application/charging.js";
 import { isHubOnline, slotAvailable } from "../../domain/resources.js";
 import { usable } from "../../domain/student-rules.js";
 
@@ -58,9 +59,7 @@ function outcome() {
 
 function renderParkingForm(s, user, now, ui) {
   const hub = s.hubs.find((x) => x.id === ui.parkingHub) || s.hubs[0];
-  const cars = s.privateVehicles.filter(
-    (x) => (x.userId || x.ownerId) === user.id,
-  );
+  const cars = ParkingService.getVehicles(s, user.id);
   const picker = select(
     "parkingHub",
     s.hubs.map((h) => [h.id, h.name]),
@@ -118,7 +117,7 @@ function parkingRecord(s, r, now) {
       button("Hủy đặt chỗ", "cancelParking", params, "secondary");
   if (r.status === "CHECKED_IN")
     actions = button("Xác nhận xe rời ô", "leaveParking", params, "secondary");
-  const ports = s.ports.filter((p) => p.hubId === r.hubId && usable(p));
+  const ports = ChargingScheduleService.getChargers(s, r.hubId);
   const free = ports.find((p) => p.status === "AVAILABLE");
   let book = "";
   if (
@@ -216,7 +215,7 @@ function chargingRecord(s, c, now) {
   const session = s.sessions.find((x) => x.scheduleId === c.id);
   let reading = "";
   if (session) {
-    const { energyKwh, cost } = chargeReading(s, session, now);
+    const { energyKwh, cost } = ChargingSessionService.chargeReading(s, session, now);
     reading =
       '<p class="detail-line" data-session-reading="' +
       esc(session.id) +

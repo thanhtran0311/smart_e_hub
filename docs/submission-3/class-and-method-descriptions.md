@@ -4,6 +4,8 @@ Nguồn là [PDF Submit 3](../references/submission-3.pdf), mục 3, trang in 6�
 
 Mỗi bảng giữ chữ ký và mô tả của thiết kế logic. Dòng **MVP** chỉ ra nơi tìm hành vi tương ứng trong repo. Các quan hệ và thuộc tính nằm trong [nguồn PlantUML](diagrams/classes.puml).
 
+SPA khai báo đủ 44 tên lớp. Các [thực thể Domain](../../src/domain/entities.js) quản lý dữ liệu và chuyển trạng thái. Các lớp dịch vụ và controller dùng phương thức tĩnh với snapshot và ngữ cảnh của use case. Các chữ ký trong bảng vẫn là chữ ký thiết kế mục tiêu. Xem [Implementation View](development-view.md) để định vị mã nguồn.
+
 Hình 7 ghi `rollbackCommands`, còn Bảng 10 mô tả `compensateCommands`. Nguồn bên dưới dùng chữ ký trong Bảng 10 và cách giải thích tại mục 3.7 về xử lý bù sau khi phát lệnh.
 
 ## 3.1 Tra cứu Hub, xác thực và giám sát mạng lưới (UC01, UC08)
@@ -71,7 +73,7 @@ Hình 7 ghi `rollbackCommands`, còn Bảng 10 mô tả `compensateCommands`. Ng
 
 ### `MonitoringService`
 
-**MVP** · networkSnapshot, cảnh báo telemetry và xuất dashboard JSON/CSV.
+**MVP** · networkSnapshot, xuất dashboard JSON/CSV và triggerRebalanceAlertIfNeeded phát một thông báo cho mỗi đợt Hub thiếu xe.
 
 | Chữ ký | Mô tả |
 | --- | --- |
@@ -151,7 +153,7 @@ Lớp chỉ khai báo thuộc tính trong sơ đồ.
 
 ### `VehicleService`
 
-**MVP** · searchHubs, pickupVehicle, deviceResult và phân loại khi trả. Xe còn nối sạc cần xác nhận ngắt và rút cáp trước khi mở khóa.
+**MVP** · searchHubs, pickupVehicle, deviceResult và phân loại khi trả. stopChargingSafely và disconnectPickupCharger xử lý xe còn nối sạc trước khi unlockAck được phép chạy.
 
 | Chữ ký | Mô tả |
 | --- | --- |
@@ -167,7 +169,7 @@ Lớp chỉ khai báo thuộc tính trong sơ đồ.
 
 ### `ReservationService`
 
-**MVP** · bookVehicle, beginPickup, cancelBooking, closeVehicleBooking, expireStudentHolds và confirmPickup.
+**MVP** · validateBooking trả bản xem trước kèm version. confirmReservation kiểm tra lại khi xác nhận thao tác bookVehicle. beginPickup, cancelBooking, closeVehicleBooking, expireStudentHolds và confirmPickup xử lý các bước còn lại.
 
 | Chữ ký | Mô tả |
 | --- | --- |
@@ -407,7 +409,7 @@ Lớp chỉ khai báo thuộc tính trong sơ đồ.
 
 ### `IncidentService`
 
-**MVP** · recordIncident, handleIncident, deviceResult và deenergize. Phiếu lưu đơn vị theo teamId.
+**MVP** · recordIncident gán phân loại ban đầu. classifyAndPrioritize cập nhật loại và mức độ từ màn Operator. handleIncident chuyển mức độ vào ưu tiên phiếu bảo trì, dùng deviceResult và deenergize cho cách ly an toàn.
 
 | Chữ ký | Mô tả |
 | --- | --- |

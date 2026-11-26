@@ -36,6 +36,7 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 - 5 Hub, 26 xe dùng chung, xe cá nhân, ô đỗ, cổng và lịch sạc có sẵn trong data/*.json. Các Hub có mã H-01 đến H-05 tương ứng Metro, KTX A, Thư viện, Bách khoa và KTX B.
 - H-01 có xe E-102 phù hợp để bắt đầu demo. H-02 có nhiều ô dùng chung để nhận xe. H-04 gần đầy và H-05 mất kết nối để trình diễn dữ liệu cũ.
 - CHG-01-01 đang có phiên sạc của student02 (PV-02) và lịch tương lai của dual01 (PV-03). CHG-01-02 trống để student01 thử sạc ngay.
+- E-304 tại H-03 có phiên sạc mẫu trên CHG-03-01 để demo ngắt sạc, xác nhận rút cáp rồi mở khóa. Dữ liệu này có sẵn ở phiên mới hoặc sau khi khôi phục dữ liệu mẫu.
 - Nút Điều khiển demo ở cuối sidebar tăng thời gian thêm 1, 2, 15 hoặc 60 phút. Dùng chức năng này để thử hết hạn giữ xe, check-in và thay đổi chỉ số năng lượng. Nhánh khôi phục dữ liệu có hộp xác nhận.
 - Mỗi 15 giây, nguồn telemetry giả lập gửi heartbeat cho các Hub trực tuyến, xử lý thời hạn và cập nhật UI. Hub đã bị ngắt kết nối thủ công giữ nguyên dữ liệu cũ đến khi phát gói hợp lệ.
 - Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Các tab cùng địa chỉ demo dùng chung dữ liệu vận hành, còn tài khoản đang đăng nhập được giữ riêng theo từng tab. Tải lại tab vẫn giữ tài khoản, đơn, chuyến, lịch, cọc và đồng hồ.
@@ -51,7 +52,7 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 
 OperationalStore sao chép trạng thái thành draft, chạy validation và mọi thay đổi đồng bộ, ghi snapshot rồi mới công bố trạng thái mới. Nếu validation hoặc lưu trữ thất bại, trạng thái đã commit trước đó được giữ lại. Lệnh thiết bị được xác nhận qua các bước riêng để biểu diễn được timeout và bằng chứng vật lý trước khi hoàn tất nghiệp vụ.
 
-AuthService, OperationalStore và DeviceControlGateway giữ tên trong thiết kế. Các controller được hiện thực bằng router và event handler. Các thực thể dùng object JSON cùng quy tắc Domain, tham chiếu bằng ID. Lệnh điều phối và kế hoạch sạc lưu hàng đợi trước khi xử lý phản hồi mô phỏng sau commit.
+Mã nguồn có đủ 44 lớp mang tên trong Submit 3. Controller nhận thao tác qua router và event handler. Các thực thể Domain tham chiếu bằng ID và giữ cùng định dạng JSON khi lưu. Store khôi phục kiểu lớp khi đọc dữ liệu hoặc tạo bản nháp giao dịch. Lệnh điều phối và kế hoạch sạc lưu hàng đợi trước khi xử lý phản hồi mô phỏng sau commit.
 
 Xem [PDF Submit 3](docs/references/submission-3.pdf), [Deployment View](docs/submission-3/deployment-view.md), [Implementation View](docs/submission-3/development-view.md) và [44 lớp cùng 184 phương thức](docs/submission-3/class-and-method-descriptions.md).
 
@@ -60,8 +61,8 @@ Xem [PDF Submit 3](docs/references/submission-3.pdf), [Deployment View](docs/sub
 | UC | Route sau dấu # | Module | Dấu hiệu hoàn tất |
 | --- | --- | --- | --- |
 | 01 | /student/hub-search | student.searchHubs, hub-search.js | Tìm theo tên, khu vực hoặc bán kính từ mốc demo, lọc loại xe và pin |
-| 02 | /student/hub-search | student.bookVehicle | Xe được giữ 15 phút, đơn xuất hiện ở hành trình |
-| 03 | /student/pickup-return | student.beginPickup → leaveSlot | Ô nguồn chỉ trống sau xác nhận cảm biến rời ô |
+| 02 | /student/hub-search | student.validateBooking → confirmReservation | Xem trước kèm version, giữ xe 15 phút sau xác nhận |
+| 03 | /student/pickup-return | student.beginPickup → leaveSlot | Xác nhận ngắt sạc và rút cáp trước khi mở khóa xe còn nối sạc. Ô nguồn chỉ trống sau xác nhận xe rời ô |
 | 04 | /student/pickup-return | student.requestReturn → finishReturn | Chuyến hoàn tất, xe và ô đích nhất quán |
 | 05 | /student/parking-charging | student.bookParking → leaveParking | Giữ cọc cùng đơn, slot đổi theo cảm biến |
 | 06 | /student/parking-charging | student.bookCharging | Giữ lịch theo khung giờ, kiểm tra trùng và công suất |

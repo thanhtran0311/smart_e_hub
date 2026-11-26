@@ -1,4 +1,5 @@
 [
   {"vehicleId":"PV-02","hubId":"H-01","userId":"U-03","start":"@now-12m","end":"@now+45m","version":1,"updatedAt":"@now","id":"SCH-01","reservationId":"RES-P01","portId":"CHG-01-01","status":"CHARGING","code":"2710","sessionId":"CSS-01"},
-  {"vehicleId":"PV-03","hubId":"H-01","userId":"U-04","start":"@now+75m","end":"@now+120m","version":1,"updatedAt":"@now","id":"SCH-02","reservationId":"RES-P02","portId":"CHG-01-01","status":"SCHEDULED","code":"4512"}
+  {"vehicleId":"PV-03","hubId":"H-01","userId":"U-04","start":"@now+75m","end":"@now+120m","version":1,"updatedAt":"@now","id":"SCH-02","reservationId":"RES-P02","portId":"CHG-01-01","status":"SCHEDULED","code":"4512"},
+  {"vehicleId":"E-304","hubId":"H-03","userId":null,"start":"@now-10m","end":"@now+60m","version":1,"updatedAt":"@now","id":"SCH-FLEET-01","reservationId":null,"portId":"CHG-03-01","status":"CHARGING","sessionId":"CSS-FLEET-01"}
 ]

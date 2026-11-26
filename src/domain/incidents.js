@@ -1,4 +1,28 @@
 import { lookup, uid } from "./resources.js";
+import { Incident } from "./entities.js";
+import { NotificationService } from "./notifications.js";
+
+export const incidentCategories = {
+  VEHICLE: "Phương tiện",
+  CHARGING_PORT: "Thiết bị sạc",
+  PARKING_SLOT: "Ô đỗ",
+  SENSOR: "Cảm biến",
+  OTHER: "Khác",
+};
+
+export const incidentSeverities = {
+  LOW: "Thấp",
+  MEDIUM: "Trung bình",
+  HIGH: "Cao",
+  CRITICAL: "Khẩn cấp",
+};
+
+export function classifyAndPrioritize(incident, category, severity) {
+  if (!Object.hasOwn(incidentCategories, category) || !Object.hasOwn(incidentSeverities, severity))
+    throw new Error("Chọn loại sự cố và mức độ hợp lệ.");
+  Object.assign(incident, { category, severity });
+  return incident;
+}
 
 /** Block new allocations immediately. Keep physical state until a safe isolation is confirmed. */
 export function recordIncident(state, targetId, reason, now) {
@@ -14,15 +38,20 @@ export function recordIncident(state, targetId, reason, now) {
   asset.blocked = true;
   asset.version = (asset.version || 0) + 1;
   asset.updatedAt = now;
-  const incident = {
+  const resourceType = state.vehicles.includes(asset) ? "VEHICLE"
+    : state.ports.includes(asset) ? "CHARGING_PORT" : "PARKING_SLOT";
+  const incident = new Incident({
     id: uid("INC"),
     targetId: asset.id,
     hubId: asset.hubId,
+    resourceType,
     status: "ISOLATING",
     reason: reason.trim(),
     createdAt: now,
     affected: [],
-  };
+  });
+  classifyAndPrioritize(incident, resourceType,
+    asset.relayOn || asset.sensorRelayOn || asset.status === "IN_USE" ? "HIGH" : "MEDIUM");
   for (const booking of [...state.reservations, ...state.schedules]) {
     if (![booking.slotId, booking.vehicleId, booking.portId].includes(asset.id))
       continue;
@@ -37,13 +66,11 @@ export function recordIncident(state, targetId, reason, now) {
     booking.updatedAt = now;
     booking.version = (booking.version || 0) + 1;
     incident.affected.push(booking.id);
-    state.notifications.push({
-      id: uid("NTF"),
+    NotificationService.sendNotification(state, {
       userId: booking.userId,
       title: "Đặt chỗ bị ảnh hưởng",
       message: "Sự cố " + asset.id + " ảnh hưởng đến " + booking.id,
-      at: now,
-    });
+    }, now);
   }
   state.incidents.push(incident);
   return incident;

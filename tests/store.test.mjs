@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { OperationalStore } from "../src/infrastructure/store.js";
 import {
+  ChargingCommand, ChargingPlan, Hub, ParkingReservation, PrivateVehicle,
+  Reservation, SharedVehicle, User, Vehicle,
+} from "../src/domain/entities.js";
+import {
   isHubOnline,
   slotAvailable,
   hubMetrics,
@@ -58,6 +62,18 @@ test("Seed mô tả xe, vị trí, tài khoản, phiên sạc và lịch tương
     );
   }
   for (const row of state.schedules) {
+    const port = state.ports.find((item) => item.id === row.portId);
+    assert.equal(port.hubId, row.hubId);
+    if (row.reservationId === null) {
+      const vehicle = state.vehicles.find((item) => item.id === row.vehicleId);
+      const fleetSession = state.sessions.find((item) => item.id === row.sessionId);
+      assert.equal(row.userId, null);
+      assert.equal(vehicle.hubId, row.hubId);
+      assert.equal(port.vehicleId, vehicle.id);
+      assert.equal(port.sessionId, fleetSession.id);
+      assert.equal(fleetSession.scheduleId, row.id);
+      continue;
+    }
     const reservation = state.reservations.find(
       (item) => item.id === row.reservationId,
     );
@@ -68,10 +84,6 @@ test("Seed mô tả xe, vị trí, tài khoản, phiên sạc và lịch tương
       row.userId,
     );
     assert.ok(reservation.start <= row.start && row.end <= reservation.end);
-    assert.equal(
-      state.ports.find((port) => port.id === row.portId).hubId,
-      row.hubId,
-    );
   }
   assert.equal(
     state.ports.find((port) => port.id === session.portId).sessionId,
@@ -167,9 +179,22 @@ test("Snapshot schema 1 thiếu danh sách phát sinh vẫn lập lịch đượ
   } });
   assert.deepEqual(restored.state.sensors, []);
   assert.equal(restored.state.hubs[0].lat, seed.hubs[0].lat);
+  assert.ok(restored.user instanceof User);
+  assert.ok(restored.state.hubs[0] instanceof Hub);
+  assert.ok(restored.state.vehicles[0] instanceof SharedVehicle);
+  assert.ok(restored.state.vehicles[0] instanceof Vehicle);
+  assert.ok(restored.state.privateVehicles[0] instanceof PrivateVehicle);
+  assert.ok(restored.state.privateVehicles[0] instanceof Vehicle);
+  assert.ok(restored.state.reservations[0] instanceof ParkingReservation);
   const plan = proposeSchedule(restored.state, "H-01", now());
-  restored.transaction((state) => operatorCommand(state, "schedule.apply",
-    { hubId: "H-01", plan }, { user: restored.user, now: now() }));
+  restored.transaction((state) => {
+    assert.ok(state.hubs[0] instanceof Hub);
+    assert.equal(Object.isFrozen(state.hubs[0]), false);
+    operatorCommand(state, "schedule.apply", { hubId: "H-01", plan }, { user: restored.user, now: now() });
+    assert.ok(state.plans[0] instanceof ChargingPlan);
+    assert.ok(state.deviceCommands[0] instanceof ChargingCommand);
+  });
+  assert.ok(Object.isFrozen(restored.state.hubs[0]));
   assert.equal(restored.state.plans.length, 1);
   assert.equal(restored.state.deviceCommands[0].result, "PENDING");
 });
@@ -212,6 +237,7 @@ test("UC02 hai phiên dùng chung kho chỉ xác nhận được một đơn cho
   const disk = JSON.parse(storage.getItem("ehub_state"));
   assert.equal(disk.userId, null);
   assert.deepEqual(disk.reservations.filter((row) => row.vehicleId === "E-102").map((row) => row.id), [accepted.value.id]);
+  assert.ok(accepted.value instanceof Reservation);
   const reloaded = await OperationalStore.openShared(seed, { ...shared, sessionStorage: secondSession });
   assert.equal(reloaded.user.id, "U-03");
   assert.equal(reloaded.state.vehicles.find((row) => row.id === "E-102").reservationId, accepted.value.id);

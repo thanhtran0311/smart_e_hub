@@ -27,7 +27,8 @@ export function touch(row, changes, now) {
 
 export function owned(rows, id, user) {
   const row = getRow(rows, id);
-  ensure(row.userId === user.id, "Bạn không có quyền thao tác với đơn này.");
+  const belongsToUser = row.belongsTo ? row.belongsTo(user.id) : row.userId === user.id;
+  ensure(belongsToUser, "Bạn không có quyền thao tác với đơn này.");
   return row;
 }
 

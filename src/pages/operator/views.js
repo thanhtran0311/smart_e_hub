@@ -12,11 +12,13 @@ import {
   time,
 } from "../../components/ui.js";
 import { campusMap } from "../../components/hub-map.js";
-import { hubMetrics, networkSnapshot } from "../../domain/resources.js";
-import { telemetryDevices } from "../../application/telemetry.js";
+import { hubMetrics } from "../../domain/resources.js";
+import { incidentCategories, incidentSeverities } from "../../domain/incidents.js";
+import { TelemetryService } from "../../application/telemetry.js";
+import { MonitoringService } from "../../application/monitoring.js";
 import {
-  previewDispatch,
-  proposeSchedule,
+  RebalanceController,
+  ChargingSchedulerController,
 } from "../../application/operator.js";
 
 const stack = (body, className = "") => '<div class="stack ' + className + '">' + body + "</div>";
@@ -79,24 +81,22 @@ const hubPair = (s, ui) => {
   };
 };
 function network(s, now, ui) {
-  const snapshot = networkSnapshot(s, now);
+  const snapshot = MonitoringService.getNetworkOverviewSnapshot(s, now);
   const hubs = snapshot.hubs.map((hub) => ({ hub, stats: hub }));
   const active = hubs.find(({ hub }) => hub.id === ui.hubId) || hubs[0];
   const format = ui.networkFormat === "csv" ? "csv" : "json";
-  const columns = ["id", "name", "availableVehicles", "occupiedSlots", "freeSlots", "currentPowerKw", "powerLimitKw", "loadStatus", "lastTelemetryAt"];
-  const csvCell = (value) => '"' + String(value ?? "").replaceAll('"', '""') + '"';
-  const report = format === "csv"
-    ? "\uFEFF" + [columns.join(","), ...snapshot.hubs.map((hub) => columns.map((key) => csvCell(hub[key])).join(","))].join("\r\n")
-    : JSON.stringify(snapshot, null, 2);
+  const report = MonitoringService.exportNetworkReport(snapshot, format);
   const downloadUrl = "data:" + (format === "csv" ? "text/csv" : "application/json") + ";charset=utf-8," + encodeURIComponent(report);
   const rows = hubs.map(({ hub, stats }) => {
     const vehicles = s.vehicles.filter((vehicle) => vehicle.hubId === hub.id);
     const occupied = stats.occupiedSlots;
     const occupancy = Math.round(100 * stats.occupancyRatio);
     const charge = vehicles.length ? Math.round(vehicles.reduce((sum, vehicle) => sum + vehicle.soc, 0) / vehicles.length) + "%" : "—";
-    const condition = !stats.online ? "Dữ liệu cũ"
-      : stats.loadStatus === "OVERLOAD" ? "Quá tải công suất"
-        : stats.loadStatus === "WARNING" ? "Gần đầy hoặc ít xe" : "";
+    const conditions = !stats.online ? ["Dữ liệu cũ"] : [
+      stats.loadStatus === "OVERLOAD" && "Quá tải công suất",
+      stats.nearFull && "Gần đầy ô đỗ",
+      stats.needsRebalance && "Thiếu xe · Cần điều phối",
+    ].filter(Boolean);
     return `<tr>
       <td><strong>${esc(hub.name)}</strong>${muted("Mã trạm: " + hub.id + " • " + hub.location)}</td>
       <td class="accent-text"><strong>${stats.availableVehicles} xe</strong></td>
@@ -104,7 +104,7 @@ function network(s, now, ui) {
         <span class="occupancy" aria-hidden="true"><span style="width:${occupancy}%"></span></span></td>
       <td class="green-text"><strong>${charge}</strong></td>
       <td>${stats.freePorts}/${stats.totalPorts} trống${muted(stats.currentPowerKw + "/" + stats.powerLimitKw + " kW")}</td>
-      <td>${badge(stats.online ? "ONLINE" : "OFFLINE")}${condition ? muted(condition) : ""}</td>
+      <td>${badge(stats.online ? "ONLINE" : "OFFLINE")}${conditions.map(muted).join("")}</td>
       <td>${Number.isFinite(hub.lastTelemetryAt)
         ? '<time datetime="' + new Date(hub.lastTelemetryAt).toISOString() + '">' + esc(updateTime.format(hub.lastTelemetryAt)) + "</time>"
         : "Chưa có dữ liệu"}</td>
@@ -137,7 +137,7 @@ const recallConfirmation = (id) =>
 function dispatchView(s, now, ui) {
   const pair = hubPair(s, ui),
     { sourceId, destId } = pair,
-    live = previewDispatch(s, sourceId, destId, now);
+    live = RebalanceController.getEligibleVehicles(s, sourceId, destId);
   const formBody =
     hidden("sourceId", sourceId) +
     hidden("destId", destId) +
@@ -249,7 +249,7 @@ function dispatchView(s, now, ui) {
 function chargeView(s, now, ui) {
   const id = ui.opsHub || s.hubs[0].id,
     priority = ui.priorityId || "",
-    plan = proposeSchedule(s, id, now, priority);
+    plan = ChargingSchedulerController.getProposedSchedule(s, id, now, priority);
   const live = s.plans.findLast((p) => p.hubId === id);
   const rows = plan.rows.map((r, i) => `<tr>
     <td><strong>#${i + 1}</strong></td><td class="accent-text"><strong>${esc(r.vehicleId)}</strong></td>
@@ -389,6 +389,7 @@ function incidents(s, now, ui) {
     assets = [...s.vehicles, ...s.ports, ...s.slots].filter(
       (x) => x.hubId === id,
     );
+  const severities = Object.keys(incidentSeverities);
   return stack(
     card(
       "Ghi nhận sự cố",
@@ -414,8 +415,10 @@ function incidents(s, now, ui) {
         "Hồ sơ xử lý",
         s.incidents.length
           ? s.incidents
-              .slice()
-              .reverse()
+              .toSorted((a, b) =>
+                Number(a.status === "RESOLVED") - Number(b.status === "RESOLVED") ||
+                severities.indexOf(b.severity || "MEDIUM") - severities.indexOf(a.severity || "MEDIUM") ||
+                b.createdAt - a.createdAt)
               .map((i) => {
                 const wo = s.workOrders.find((w) => w.incidentId === i.id);
                 const stop = i.status !== "RESOLVED" && s.ports.some((p) => p.id === i.targetId && p.relayOn)
@@ -457,11 +460,20 @@ function incidents(s, now, ui) {
                   "<article>" +
                   line(
                     i.targetId + " · " + i.reason,
-                    i.id + " · " + time(i.createdAt),
+                    i.id + " · " + time(i.createdAt) + " · " +
+                      (incidentCategories[i.category] || "Chưa phân loại") + " · " +
+                      (incidentSeverities[i.severity] || "Trung bình"),
                     badge(i.status),
                   ) +
+                  (i.status === "RESOLVED" ? "" : '<details><summary>Phân loại và xếp mức độ</summary>' +
+                    form("incident.classify",
+                      hidden("id", i.id) +
+                      field("Loại sự cố", select("category", Object.entries(incidentCategories), i.category || "OTHER")) +
+                      field("Mức độ", select("severity", Object.entries(incidentSeverities), i.severity || "MEDIUM")) +
+                      submit("Lưu phân loại", "secondary")) + "</details>") +
                   row(stop + controls) +
-                  (wo ? line(wo.id, s.teams.find((team) => team.id === wo.teamId)?.name || "Phiếu bảo trì", badge(wo.status)) : "") +
+                  (wo ? line(wo.id, (s.teams.find((team) => team.id === wo.teamId)?.name || "Phiếu bảo trì") +
+                    " · Ưu tiên " + (incidentSeverities[wo.priority || i.severity] || "Trung bình"), badge(wo.status)) : "") +
                   (i.affected || [])
                     .map((id) =>
                       [...s.reservations, ...s.schedules].find(
@@ -636,7 +648,7 @@ function whatIf(s, now, ui) {
 
 function telemetry(s, now, ui) {
   const id = ui.opsHub || s.hubs[0].id;
-  const devices = telemetryDevices(s, id);
+  const devices = TelemetryService.telemetryDevices(s, id);
   const selected = devices.find((device) => device.resource.id === ui.telemetryDevice);
   const signal = (name, value) => select(name, [["false", "Không"], ["true", "Có"]], String(Boolean(value)));
   const payloadField = selected?.type === "PARKING_SPACE"

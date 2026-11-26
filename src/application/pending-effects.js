@@ -1,7 +1,7 @@
 import { isHubOnline } from "../domain/resources.js";
 import { usable } from "../domain/student-rules.js";
 import { ACTIVE_CHARGING as activeSchedules, CONTROL_RESULT } from "../utils/status.js";
-import { energize, hasPowerFor } from "./charging.js";
+import { ChargingSessionService } from "./charging.js";
 
 function canProcess(state, request, now) {
   const schedule = state.schedules.find((row) => row.id === request.scheduleId);
@@ -18,8 +18,7 @@ export function processPendingEffects(store) {
   for (const { id } of assignments)
     store.transaction((state, now) => {
       const order = state.orders.find((row) => row.id === id);
-      order.assignmentStatus = "SENT";
-      order.assignedAt = now;
+      order.confirmAssignment(now);
     });
 
   const ready = store.state.deviceCommands.filter((request) =>
@@ -41,7 +40,7 @@ export function processPendingEffects(store) {
         Object.assign(request, { result: CONTROL_RESULT.FAILED, resolvedAt: now, message: "Cổng chưa xác nhận điều kiện an toàn." });
         return;
       }
-      if (hasPowerFor(state, port, now))
-        energize(state, schedule, now, request.outcome, request);
+      if (ChargingSessionService.hasPowerFor(state, port, now))
+        ChargingSessionService.energize(state, schedule, now, request.outcome, request);
     });
 }

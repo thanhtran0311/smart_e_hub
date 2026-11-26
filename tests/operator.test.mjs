@@ -10,7 +10,7 @@ import { operatorView } from "../src/pages/operator/views.js";
 import { hubMetrics } from "../src/domain/resources.js";
 import { processPendingEffects } from "../src/application/pending-effects.js";
 import { studentCommand } from "../src/application/student.js";
-import { checkSensorTimeouts } from "../src/application/telemetry.js";
+import { checkSensorTimeouts, triggerRebalanceAlertIfNeeded } from "../src/application/telemetry.js";
 
 async function setup() {
   let tick = 1770000000000;
@@ -92,7 +92,7 @@ test("UC09 rejects stale vehicle versions and releases a cancelled dispatch comp
 test("UC10 keeps confirmed windows and energized session intact; rejects stale plan", async () => {
   const { store, run } = await setup(),
     before = store.state;
-  const priorityId = before.schedules.at(-1).id;
+  const priorityId = before.schedules.find((row) => row.hubId === "H-01" && row.status === "SCHEDULED").id;
   const plan = proposeSchedule(before, "H-01", store.now(), priorityId);
   run("schedule.apply", {
     hubId: "H-01",
@@ -113,6 +113,10 @@ test("UC11 blocks allocations, requires physical safety, records affected bookin
     targetId = future.portId;
   run("incident.open", { targetId, reason: "Mất phản hồi cổng" });
   const id = store.state.incidents.at(-1).id;
+  assert.equal(store.state.incidents.at(-1).category, "CHARGING_PORT");
+  assert.equal(store.state.incidents.at(-1).severity, "HIGH");
+  assert.throws(() => run("incident.classify", { id, category: "SENSOR", severity: "INVALID" }), /mức độ/);
+  run("incident.classify", { id, category: "SENSOR", severity: "CRITICAL" });
   assert.equal(
     store.state.schedules.find((x) => x.id === future.id).status,
     "AFFECTED",
@@ -140,9 +144,11 @@ test("UC11 blocks allocations, requires physical safety, records affected bookin
   run("incident.isolate", { id, outcome: "OK" });
   run("incident.work", { id, outcome: "TIMEOUT" });
   const code = store.state.workOrders.at(-1).id;
+  assert.equal(store.state.workOrders.at(-1).priority, "CRITICAL");
   run("incident.work", { id, outcome: "OK" });
   assert.equal(store.state.workOrders.length, 1);
   assert.equal(store.state.workOrders[0].id, code);
+  assert.equal(store.state.workOrders[0].priority, "CRITICAL");
   run("incident.remedy", { id, recordId: future.id, decision: "CANCELLED" });
   run("incident.resolve", { id });
   assert.equal(store.state.ports.find((x) => x.id === targetId).blocked, false);
@@ -271,6 +277,26 @@ test("UC08 hiển thị thời điểm cập nhật riêng của từng Hub ngay
     assert.ok(row.includes('<time datetime="' + new Date(hub.lastTelemetryAt).toISOString() + '">'));
     if (hub.offline) assert.match(row, /Dữ liệu cũ/);
   }
+});
+
+test("UC08 cảnh báo thiếu xe chỉ phát lại sau khi Hub phục hồi rồi thiếu xe trở lại", async () => {
+  const { store } = await setup();
+  const alerts = () => store.state.notifications.filter((row) =>
+    row.relatedId === "H-02" && row.title === "Cảnh báo thiếu xe khả dụng");
+  store.transaction(triggerRebalanceAlertIfNeeded);
+  store.transaction(triggerRebalanceAlertIfNeeded);
+  assert.equal(alerts().length, 1);
+  assert.match(operatorView("network-dashboard", store.state, store.now(), {}), /Cần điều phối/);
+  const evaluate = (ratio) => store.transaction((state, now) => {
+    state.config.params.HUB_LOW_AVAIL_RATIO = ratio;
+    triggerRebalanceAlertIfNeeded(state, now);
+  });
+  evaluate(0);
+  evaluate(0.1);
+  assert.equal(alerts().length, 2);
+  const preview = previewDispatch(store.state, "H-03", "H-02");
+  assert.ok(preview.vehicles.length > 0);
+  assert.ok(!preview.vehicles.some((vehicle) => vehicle.id === "E-304"));
 });
 
 test("UC11 đổi ô kiểm tra trùng lịch cho cùng xe ở ô khác", async () => {
