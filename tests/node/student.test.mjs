@@ -16,6 +16,24 @@ import {
 
 const epoch = Date.UTC(2026, 10, 25, 1);
 const minute = 60000;
+test("UC05 đến đúng giờ nhưng ô chưa được bàn giao thì hết hạn được nhả cọc", async () => {
+  const { store, run, advance } = await setup();
+  store.login("dual01", "123456");
+  const balance = store.user.balance;
+  advance(76);
+  const input = { reservationId: "RES-P02" };
+  const attempt = run("checkInParking", input);
+  assert.equal(attempt.status, "CONFIRMED");
+  assert.match(attempt.operationError, /chưa thể bàn giao/);
+  advance(1);
+  assert.equal(run("checkInParking", input).checkInBlockedAt, attempt.checkInBlockedAt);
+  advance(15);
+  const expired = store.state.reservations.find((row) => row.id === input.reservationId);
+  assert.equal(expired.status, "EXPIRED");
+  assert.equal(expired.depositStatus, "RELEASED");
+  assert.equal(store.user.balance, balance);
+  assert.equal(store.state.slots.find((slot) => slot.id === expired.slotId).vehicleId, "PV-02");
+});
 async function setup(storage) {
   const store = await demoStore({ now: () => epoch, storage });
   store.login("student01", "123456");

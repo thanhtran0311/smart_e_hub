@@ -260,6 +260,7 @@ export class DispatchService {
       check(
         x.holdId === o.id &&
           !x.blocked &&
+          !x.sensorOffline &&
           !x.vehicleId &&
           !x.sensorOccupied &&
           x.status === "AVAILABLE",
@@ -314,7 +315,8 @@ export class SmartChargingService {
       (x) => x.hubId === hubId && x.status === "CHARGING",
     );
     const bookings = s.schedules.filter(
-      (x) => x.hubId === hubId && activeSchedules.has(x.status) && x.end > now,
+      (x) => x.hubId === hubId && activeSchedules.has(x.status) && x.end > now &&
+        !s.reservations.some((r) => r.id === x.reservationId && r.status === "AFFECTED"),
     );
     const weights = s.config.priorityWeights;
     const rows = bookings
@@ -400,8 +402,8 @@ export class SmartChargingService {
       "Lịch hoặc tài nguyên đã thay đổi. Hãy xem lại đề xuất.",
     );
     check(
-      live.rows.every((r) => !byId(s.ports, r.portId).blocked),
-      "Kế hoạch chứa cổng đang bị cách ly.",
+      live.rows.every((r) => usable(byId(s.ports, r.portId))),
+      "Kế hoạch chứa cổng đang bị cách ly hoặc cảm biến mất kết nối.",
     );
     check(
       SmartChargingService.checkPowerConstraints(live),
@@ -754,8 +756,11 @@ export class IncidentService {
         }
         b.start = start;
         b.end = end;
-        if (key === "slotId")
+        if (key === "slotId") {
+          delete b.checkInBlockedAt;
+          delete b.operationError;
           b.expiresAt = Math.min(end, start + s.config.params.T_GRACE_MIN * MINUTE);
+        }
       }
       b[key] = dest.id;
       b.status = p.decision;

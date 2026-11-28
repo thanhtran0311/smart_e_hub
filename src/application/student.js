@@ -425,7 +425,7 @@ export class ParkingService {
   }
 
   static closeParking(state, row, status, now) {
-    ParkingService.settleDeposit(state, row, status === "EXPIRED", now);
+    ParkingService.settleDeposit(state, row, status === "EXPIRED" && row.checkInBlockedAt == null, now);
     ParkingService.reconcileSlot(getRow(state.slots, row.slotId), now);
     ChargingScheduleService.cancelScheduleByReservationExpiry(state, row.id, now);
     if (status === "EXPIRED") return touch(row.expire(), {}, now);
@@ -465,7 +465,6 @@ export class ParkingService {
   static checkIn(state, input, user, now) {
     const row = ParkingService.getReservation(state, input, user);
     const slot = getRow(state.slots, row.slotId);
-    guardHubOnline(state, row.hubId, now);
     ensure(
       confirmedParking.includes(row.status) &&
         now >= row.start &&
@@ -473,18 +472,16 @@ export class ParkingService {
         now < row.end,
       "Đơn chưa đến giờ, đã quá hạn hoặc đã check-in.",
     );
-    ensure(
-      usable(slot) &&
-        slot.status === "AVAILABLE" &&
-        !slot.holdId &&
-        !slot.vehicleId &&
-        !slot.sensorOccupied &&
-        !state.slots.some((other) => other.vehicleId === row.vehicleId),
-      "Chưa xác nhận ô đích trống hoặc xe vẫn ở một ô khác.",
-    );
+    ensure(!state.slots.some((other) => other.vehicleId === row.vehicleId), "Xe không thể check-in vì xe vẫn ở một ô khác.");
+    if (!isHubOnline(state, row.hubId, now) || !slotAvailable(state, slot)) {
+      return touch(row, {
+        checkInBlockedAt: row.checkInBlockedAt ?? now,
+        operationError: "Đã ghi nhận bạn đến đúng hạn. Hub chưa thể bàn giao ô. Bạn có thể thử lại và sẽ được hoàn cọc nếu đơn hết hạn.",
+      }, now);
+    }
     touch(slot.markOccupied(row.vehicleId), {}, now);
     ParkingService.settleDeposit(state, row, false, now);
-    return touch(row.markCheckedIn(now), {}, now);
+    return touch(row.markCheckedIn(now), { operationError: null }, now);
   }
 
   static leaveParking(state, input, user, now) {

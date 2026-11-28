@@ -59,7 +59,8 @@ export function recordIncident(state, targetId, reason, now, origin = "SYSTEM") 
   classifyAndPrioritize(incident, resourceType,
     asset.relayOn || asset.sensorRelayOn || asset.status === "IN_USE" ? "HIGH" : "MEDIUM");
   for (const booking of [...state.reservations, ...state.schedules]) {
-    if (![booking.slotId, booking.vehicleId, booking.portId].includes(asset.id))
+    if (![booking.slotId, booking.vehicleId, booking.portId].includes(asset.id) &&
+        !incident.affected.includes(booking.reservationId))
       continue;
     if (
       !["CONFIRMED", "SCHEDULED", "REPLACED", "RESCHEDULED"].includes(

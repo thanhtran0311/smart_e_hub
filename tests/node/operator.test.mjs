@@ -40,6 +40,42 @@ async function setup() {
   return { store, run, order };
 }
 
+test("UC09 giữ nguyên lệnh và ô nhận khi cảm biến đích mất kết nối giữa hành trình", async () => {
+  const { store, run, order } = await setup();
+  run("dispatch.create", order());
+  const { id, items: [item] } = store.state.orders[0];
+  run("dispatch.start", { id });
+  const packet = { hubId: "H-02", deviceId: item.slotId };
+  run("telemetry.emit", { ...packet, mode: "sensorOffline" });
+  const receive = () => run("dispatch.receive", { id, vehicleId: item.vehicleId, success: true });
+  assert.throws(receive, /không còn an toàn/);
+  assert.equal(store.state.orders[0].status, "IN_TRANSIT");
+  assert.equal(store.state.slots.find((slot) => slot.id === item.slotId).holdId, id);
+  run("telemetry.emit", { ...packet, occupied: false });
+  receive();
+  assert.equal(store.state.orders[0].status, "COMPLETED");
+});
+
+test("UC11 đánh dấu cả lịch sạc của đơn đỗ bị ảnh hưởng và loại khỏi UC10", async () => {
+  const { store, run } = await setup();
+  run("incident.open", { targetId: "P-01-13", reason: "Ô cần kiểm tra" });
+  const incident = store.state.incidents.at(-1);
+  assert.ok(incident.affected.includes("SCH-02"));
+  assert.equal(store.state.schedules.find((row) => row.id === "SCH-02").status, "AFFECTED");
+  assert.ok(!proposeSchedule(store.state, "H-01", store.now()).rows.some((r) => r.id === "SCH-02"));
+  run("incident.remedy", { id: incident.id, recordId: "RES-P02", decision: "CANCELLED" });
+  assert.equal(store.state.schedules.find((row) => row.id === "SCH-02").status, "CANCELLED");
+});
+
+test("UC10 từ chối kế hoạch mới nếu cổng đã mất tín hiệu trước lúc duyệt", async () => {
+  const { store, run } = await setup();
+  run("telemetry.emit", { hubId: "H-01", deviceId: "CHG-01-01", mode: "sensorOffline" });
+  const plan = proposeSchedule(store.state, "H-01", store.now());
+  assert.throws(() => run("schedule.apply", { hubId: "H-01", plan }), /mất kết nối/);
+  assert.equal(store.state.plans.length, 0);
+  assert.equal(store.state.deviceCommands.length, 0);
+});
+
 test("UC08–09 holds capacity, tracks four arrivals out of five, releases the unused hold", async () => {
   const { store, run, order } = await setup();
   const baseline = hubMetrics(store.state, "H-02", store.now());

@@ -1,5 +1,6 @@
 import { lookup } from "../domain/resources.js";
 import { User } from "../domain/entities.js";
+import { sharedSnapshot } from "./shared-snapshot.js";
 import { cloneOperationalState, hydrateOperationalState } from "./operational-snapshot.js";
 
 const key = "ehub_state";
@@ -104,10 +105,19 @@ export class OperationalStore {
   #sessionStorage;
   #locked = false;
   #writing = false;
+  #database = false;
+  #dirty = false;
 
   static openShared(seed, { storage, sessionStorage, lockManager, now }) {
-    return lockManager.request(key, () => {
-      const store = new OperationalStore(seed, { storage, now });
+    return lockManager.request(key, async () => {
+      const database = typeof window !== "undefined" && storage === window.localStorage;
+      const committed = database ? await sharedSnapshot(key) : undefined;
+      const store = database
+        ? new OperationalStore(seed, { now, initialRaw: committed ?? storage.getItem(key) })
+        : new OperationalStore(seed, { storage, now });
+      store.#database = database;
+      if (database && committed === undefined)
+        await sharedSnapshot(key, JSON.stringify({ ...store.state, userId: null }));
       store.#lockManager = lockManager;
       store.#sessionStorage = sessionStorage;
       store.#state = immutable({
@@ -118,16 +128,15 @@ export class OperationalStore {
     });
   }
 
-  constructor(seed, { storage = null, now = Date.now } = {}) {
+  constructor(seed, { storage = null, now = Date.now, initialRaw } = {}) {
     this.#seed = structuredClone(seed);
     this.#storage = storage;
     this.#clock = now;
-    this.#state = this.#readSaved();
+    this.#state = this.#readSaved(initialRaw);
     if (!this.#state) this.reset();
   }
 
-  #readSaved() {
-    const raw = this.#storage?.getItem(key);
+  #readSaved(raw = this.#storage?.getItem(key)) {
     let saved;
     try {
       if (raw) saved = JSON.parse(raw);
@@ -158,8 +167,23 @@ export class OperationalStore {
     return this.#lockManager.request(key, async () => {
       this.#locked = true;
       try {
-        this.#state = this.#readSaved() ?? immutable(this.#initialState(this.state.userId));
-        return await change();
+        const raw = this.#database ? await sharedSnapshot(key) : undefined;
+        this.#state = this.#readSaved(raw) ?? immutable(this.#initialState(this.state.userId));
+        const before = this.#state;
+        this.#dirty = false;
+        try {
+          return await change();
+        } finally {
+          // A command may reject after earlier subtransactions (e.g. an audit entry) succeeded.
+          if (this.#dirty) {
+            try {
+              await sharedSnapshot(key, JSON.stringify({ ...this.#state, userId: null }));
+            } catch (error) {
+              this.#state = before;
+              throw error;
+            }
+          }
+        }
       } finally {
         this.#locked = false;
       }
@@ -203,6 +227,7 @@ export class OperationalStore {
       );
     }
     this.#state = immutable(next);
+    this.#dirty = this.#database;
   }
 
   #requireLock() {

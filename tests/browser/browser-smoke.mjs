@@ -21,8 +21,8 @@ try {
   });
   const base = process.env.DEMO_URL || "http://127.0.0.1:8000";
   const state = (tab = page) =>
-    tab.evaluate(() => navigator.locks.request("ehub_state", () => ({
-      ...JSON.parse(localStorage.getItem("ehub_state")),
+    tab.evaluate(() => navigator.locks.request("ehub_state", async () => ({
+      ...JSON.parse(await (await import("/src/infrastructure/shared-snapshot.js")).sharedSnapshot("ehub_state")),
       userId: sessionStorage.getItem("ehub_session_user"),
     })));
   const btn = (action) =>

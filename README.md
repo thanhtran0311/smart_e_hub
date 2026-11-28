@@ -16,7 +16,7 @@ Hoặc dùng Node.js 22 trở lên.
 node tools/serve.mjs
 ```
 
-Mở http://127.0.0.1:8000. Dùng cùng địa chỉ và cổng cho các lần demo để khôi phục đúng dữ liệu đã lưu. Các URL localhost, 127.0.0.1 và các cổng khác nhau có vùng localStorage riêng. ES modules và JSON được tải qua HTTP, vì vậy hãy mở ứng dụng qua máy chủ tĩnh.
+Mở http://127.0.0.1:8000. Dùng cùng địa chỉ và cổng cho các lần demo để khôi phục đúng dữ liệu đã lưu. Các URL localhost, 127.0.0.1 và các cổng khác nhau có vùng lưu trữ riêng. ES modules và JSON được tải qua HTTP, vì vậy hãy mở ứng dụng qua máy chủ tĩnh.
 
 Có thể nhấp đúp start-demo.bat. Script ưu tiên máy chủ Node nếu Node đã được cài, sau đó dùng Python. Dừng máy chủ bằng Ctrl+C.
 
@@ -39,7 +39,7 @@ Nhấp tên người dùng ở góc phải để đăng xuất. Mỗi tài kho�
 - E-304 tại H-03 có phiên sạc mẫu trên CHG-03-01 để demo ngắt sạc, xác nhận rút cáp rồi mở khóa. Dữ liệu này có sẵn ở phiên mới hoặc sau khi khôi phục dữ liệu mẫu.
 - Nút Điều khiển demo ở cuối sidebar tăng thời gian thêm 1, 2, 15 hoặc 60 phút. Dùng chức năng này để thử hết hạn giữ xe, check-in và thay đổi chỉ số năng lượng. Nhánh khôi phục dữ liệu có hộp xác nhận.
 - Mỗi 15 giây, nguồn telemetry giả lập gửi heartbeat cho các Hub trực tuyến, xử lý thời hạn và cập nhật UI. Hub đã bị ngắt kết nối thủ công giữ nguyên dữ liệu cũ đến khi phát gói hợp lệ.
-- Trạng thái đã commit được lưu vào localStorage với khóa ehub_state. Các tab cùng địa chỉ demo dùng chung dữ liệu vận hành, còn tài khoản đang đăng nhập được giữ riêng theo từng tab. Tải lại tab vẫn giữ tài khoản, đơn, chuyến, lịch, cọc và đồng hồ.
+- Trạng thái vận hành được lưu trong IndexedDB. Khi mở lần đầu sau khi nâng cấp, ứng dụng đọc dữ liệu demo cũ từ localStorage. Các tab cùng địa chỉ demo dùng chung dữ liệu vận hành, còn tài khoản đang đăng nhập được giữ riêng theo từng tab. Tải lại tab vẫn giữ tài khoản, đơn, chuyến, lịch, cọc và đồng hồ.
 
 ## Cấu trúc thư mục
 
